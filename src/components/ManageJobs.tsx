@@ -45,7 +45,7 @@ export function ManageJobs() {
     const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [userData, setUserData] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<'pending' | 'ongoing' | 'conduct_rounds' | 'selected' | 'invitation_sent' | 'offer_sent' | 'offer_accepted'>('pending');
+    const [activeTab, setActiveTab] = useState<'pending' | 'decision_review' | 'ongoing' | 'conduct_rounds' | 'selected' | 'invitation_sent' | 'offer_sent' | 'offer_accepted'>('pending');
     
     // Schedule Interview form state
     const [teams, setTeams] = useState<any[]>([]);
@@ -63,6 +63,12 @@ export function ManageJobs() {
     const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
     const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set());
 
+    // Review request state
+    const [showReviewModal, setShowReviewModal] = useState<string | null>(null);
+    const [reviewEmail, setReviewEmail] = useState('');
+    const [sendingReview, setSendingReview] = useState(false);
+    const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+
     // Round options for interview scheduling
     const roundOptions = [
         'Initial Screening Round',
@@ -73,6 +79,49 @@ export function ManageJobs() {
         'Discussion Round',
         'Negotiation / Offer Round'
     ];
+
+    const submitReviewRequest = async () => {
+        if (!selectedJobId || !selectedApplicant || !reviewEmail) return;
+        setSendingReview(true);
+        setMessage(null);
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.CREATE_REVIEW_REQUEST,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        job_id: selectedJobId,
+                        applicant_email: selectedApplicant.email,
+                        applicant_name: selectedApplicant.name,
+                        reviewer_email: reviewEmail,
+                        resume_url: selectedApplicant.resume_url || selectedApplicant.profile?.resume_url,
+                        additional_details: selectedApplicant.additional_details || selectedApplicant.profile?.additional_details || ''
+                    })
+                },
+                navigate
+            );
+            if (res && res.ok) {
+                setMessage({ type: 'success', text: 'Review request sent successfully! Updating status...' });
+                // Close modal first
+                setShowReviewModal(null);
+                setReviewEmail('');
+                setSelectedApplicant(null);
+                // Then update status and refresh
+                await handleStatusChange(selectedApplicant.email, 'decision_pending_review');
+                // Refresh applicants to show updated status
+                await fetchApplicants(selectedJobId);
+            } else {
+                const err = await res?.json();
+                setMessage({ type: 'error', text: err?.detail || 'Failed to send review request' });
+            }
+        } catch (e) {
+            console.error('Failed to send review request', e);
+            setMessage({ type: 'error', text: 'Failed to send review request' });
+        } finally {
+            setSendingReview(false);
+        }
+    };
 
     useEffect(() => {
         // Check authentication
@@ -185,6 +234,8 @@ export function ManageJobs() {
                 // Navigate to appropriate tab based on status
                 if (newStatus === 'selected_for_interview') {
                     setActiveTab('conduct_rounds');
+                } else if (newStatus === 'decision_pending_review') {
+                    setActiveTab('decision_review');
                 } else if (newStatus === 'selected') {
                     setActiveTab('selected');
                 } else if (newStatus === 'processing') {
@@ -403,6 +454,9 @@ export function ManageJobs() {
     const decisionPending = applicants.filter(app => 
         app.status === 'applied' || app.status === 'decision_pending' || !app.status
     );
+    const decisionReview = applicants.filter(app =>
+        app.status === 'decision_pending_review'
+    );
     const invitationSent = applicants.filter(app => 
         app.status === 'invitation_sent'
     );
@@ -430,6 +484,7 @@ export function ManageJobs() {
             case 'selected_for_interview': return 'bg-blue-100 text-blue-700';
             case 'rejected': return 'bg-red-100 text-red-700';
             case 'decision_pending': return 'bg-yellow-100 text-yellow-700';
+            case 'decision_pending_review': return 'bg-yellow-100 text-yellow-700';
             case 'invitation_sent': return 'bg-orange-100 text-orange-700';
             case 'processing': return 'bg-blue-100 text-blue-700';
             case 'offer_sent': return 'bg-orange-100 text-orange-700';
@@ -649,12 +704,12 @@ export function ManageJobs() {
                             border: '1px solid #e2e8f0',
                             overflow: 'hidden'
                         }}>
-                            <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', overflowX: 'auto', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', overflowX: 'auto', flexWrap: 'nowrap' }}>
                                 <button
                                     onClick={() => setActiveTab('pending')}
                                     style={{ 
-                                        flex: '1 1 auto',
-                                        minWidth: '140px',
+                                        flex: '0 0 auto',
+                                        minWidth: '160px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
                                         fontWeight: '600',
@@ -686,10 +741,45 @@ export function ManageJobs() {
                                     <span>Decision Pending ({decisionPending.length})</span>
                                 </button>
                                 <button
+                                    onClick={() => setActiveTab('decision_review')}
+                                    style={{ 
+                                        flex: '0 0 auto',
+                                        minWidth: '160px',
+                                        padding: '14px 20px',
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                        transition: 'all 0.15s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        border: 'none',
+                                        borderBottom: activeTab === 'decision_review' ? '3px solid #facc15' : '3px solid transparent',
+                                        background: activeTab === 'decision_review' ? 'linear-gradient(to bottom, #fef3c7, #fde68a)' : 'transparent',
+                                        color: activeTab === 'decision_review' ? '#b45309' : '#64748b',
+                                        cursor: 'pointer'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (activeTab !== 'decision_review') {
+                                            e.currentTarget.style.background = '#f8fafc';
+                                            e.currentTarget.style.color = '#475569';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (activeTab !== 'decision_review') {
+                                            e.currentTarget.style.background = 'transparent';
+                                            e.currentTarget.style.color = '#64748b';
+                                        }
+                                    }}
+                                >
+                                    <Clock style={{ width: '16px', height: '16px' }} />
+                                    <span>Decision Review ({decisionReview.length})</span>
+                                </button>
+                                <button
                                     onClick={() => setActiveTab('conduct_rounds')}
                                     style={{ 
-                                        flex: '1 1 auto',
-                                        minWidth: '140px',
+                                        flex: '0 0 auto',
+                                        minWidth: '160px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
                                         fontWeight: '600',
@@ -723,8 +813,8 @@ export function ManageJobs() {
                                 <button
                                     onClick={() => setActiveTab('invitation_sent')}
                                     style={{ 
-                                        flex: '1 1 auto',
-                                        minWidth: '140px',
+                                        flex: '0 0 auto',
+                                        minWidth: '150px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
                                         fontWeight: '600',
@@ -758,8 +848,8 @@ export function ManageJobs() {
                                 <button
                                     onClick={() => setActiveTab('ongoing')}
                                     style={{ 
-                                        flex: '1 1 auto',
-                                        minWidth: '140px',
+                                        flex: '0 0 auto',
+                                        minWidth: '150px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
                                         fontWeight: '600',
@@ -793,8 +883,8 @@ export function ManageJobs() {
                                 <button
                                     onClick={() => setActiveTab('selected')}
                                     style={{ 
-                                        flex: '1 1 auto',
-                                        minWidth: '130px',
+                                        flex: '0 0 auto',
+                                        minWidth: '120px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
                                         fontWeight: '600',
@@ -828,8 +918,8 @@ export function ManageJobs() {
                                 <button
                                     onClick={() => setActiveTab('offer_sent')}
                                     style={{ 
-                                        flex: '1 1 auto',
-                                        minWidth: '130px',
+                                        flex: '0 0 auto',
+                                        minWidth: '120px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
                                         fontWeight: '600',
@@ -863,7 +953,7 @@ export function ManageJobs() {
                                 <button
                                     onClick={() => setActiveTab('offer_accepted')}
                                     style={{ 
-                                        flex: '1 1 auto',
+                                        flex: '0 0 auto',
                                         minWidth: '150px',
                                         padding: '14px 20px',
                                         fontSize: '13px',
@@ -972,10 +1062,18 @@ export function ManageJobs() {
                                                                 </button>
                                                                 
                                                                 {/* Status Dropdown - Small */}
-                                                                <div style={{ position: 'relative', minWidth: '180px' }}>
+                                                                <div style={{ position: 'relative', minWidth: '200px' }}>
                                                                     <select
                                                                         value={applicant.status || 'decision_pending'}
-                                                                        onChange={(e) => handleStatusChange(applicant.email, e.target.value)}
+                                                                        onChange={(e) => {
+                                                                            const value = e.target.value;
+                                                                            if (value === 'ask_for_review') {
+                                                                                setSelectedApplicant(applicant);
+                                                                                setShowReviewModal(applicant.email);
+                                                                                return;
+                                                                            }
+                                                                            handleStatusChange(applicant.email, value);
+                                                                        }}
                                                                         disabled={updatingStatus === applicant.email}
                                                                         style={{
                                                                             width: '100%',
@@ -1004,6 +1102,7 @@ export function ManageJobs() {
                                                                         }}
                                                                     >
                                                                         <option value="decision_pending">⏳ Pending</option>
+                                                                        <option value="ask_for_review">📧 Ask for review</option>
                                                                         <option value="selected_for_interview">✅ Interview</option>
                                                                         <option value="selected">🎯 Selected</option>
                                                                         <option value="rejected">❌ Rejected</option>
@@ -1193,6 +1292,191 @@ export function ManageJobs() {
                                                                         </div>
                                                                     ))}
                                                                 </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'decision_review' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '600px', overflowY: 'auto' }}>
+                                        {decisionReview.length === 0 ? (
+                                            <div style={{ 
+                                                textAlign: 'center', 
+                                                padding: '40px 20px',
+                                                background: 'linear-gradient(to bottom right, #fefce8, #fef9c3)',
+                                                borderRadius: '12px',
+                                                border: '1px solid #fde047'
+                                            }}>
+                                                <Clock style={{ width: '48px', height: '48px', color: '#a16207', margin: '0 auto 12px' }} />
+                                                <p style={{ color: '#713f12', fontSize: '14px', fontWeight: '500', margin: 0 }}>No candidates currently in decision review</p>
+                                            </div>
+                                        ) : (
+                                            decisionReview.map((applicant) => {
+                                                const showDetails = expandedDetails.has(applicant.email);
+                                                return (
+                                                    <div key={applicant._id} style={{ 
+                                                        background: 'linear-gradient(135deg, #fefce8 0%, #fef9c3 100%)', 
+                                                        border: '1px solid #fde047', 
+                                                        borderRadius: '12px', 
+                                                        padding: '16px',
+                                                        boxShadow: '0 2px 10px rgba(234, 179, 8, 0.15)',
+                                                        transition: 'all 0.15s ease',
+                                                        transform: 'translateY(0)'
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '12px' }}>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <h3 style={{ fontWeight: '600', color: '#854d0e', fontSize: '15px', margin: '0 0 4px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{applicant.name}</h3>
+                                                                <p style={{ fontSize: '12px', color: '#a16207', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{applicant.email}</p>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const newSet = new Set(expandedDetails);
+                                                                        if (newSet.has(applicant.email)) {
+                                                                            newSet.delete(applicant.email);
+                                                                        } else {
+                                                                            newSet.add(applicant.email);
+                                                                        }
+                                                                        setExpandedDetails(newSet);
+                                                                    }}
+                                                                    style={{
+                                                                        padding: '6px 12px',
+                                                                        fontSize: '11px',
+                                                                        color: '#2563eb',
+                                                                        background: showDetails ? '#dbeafe' : '#eff6ff',
+                                                                        border: `1px solid ${showDetails ? '#93c5fd' : '#bfdbfe'}`,
+                                                                        borderRadius: '6px',
+                                                                        cursor: 'pointer',
+                                                                        fontWeight: '500',
+                                                                        transition: 'all 0.15s ease',
+                                                                        whiteSpace: 'nowrap'
+                                                                    }}
+                                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#bfdbfe'}
+                                                                    onMouseLeave={(e) => e.currentTarget.style.background = showDetails ? '#dbeafe' : '#eff6ff'}
+                                                                >
+                                                                    {showDetails ? '▼' : '▶'} Details
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        {showDetails && (
+                                                            <div style={{
+                                                                marginTop: '12px',
+                                                                padding: '14px',
+                                                                background: 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)',
+                                                                borderRadius: '10px',
+                                                                border: '1px solid #e2e8f0',
+                                                                fontSize: '11px'
+                                                            }}>
+                                                                {(applicant.resume_url || applicant.profile?.resume_url) && (
+                                                                    <div style={{ marginBottom: '12px', padding: '10px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                                        <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                            <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
+                                                                            <a 
+                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer" 
+                                                                                style={{
+                                                                                    color: '#2563eb',
+                                                                                    textDecoration: 'none',
+                                                                                    fontWeight: '500',
+                                                                                    transition: 'all 0.15s ease'
+                                                                                }}
+                                                                                onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                                                                                onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                                                            >
+                                                                                View Resume →
+                                                                            </a>
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                                {(applicant.additional_details || applicant.profile?.additional_details) && (
+                                                                    <div style={{
+                                                                        marginBottom: '12px',
+                                                                        padding: '14px',
+                                                                        background: 'linear-gradient(to bottom right, #f0f9ff, #e0f2fe)',
+                                                                        borderRadius: '8px',
+                                                                        border: '1px solid #bae6fd',
+                                                                        maxHeight: '350px',
+                                                                        overflowY: 'auto'
+                                                                    }}>
+                                                                        <div style={{ fontSize: '11px', lineHeight: '1.8', color: '#475569' }}>
+                                                                            {(() => {
+                                                                                const details = applicant.additional_details || applicant.profile?.additional_details || '';
+                                                                                const lines = details.split('\n').filter((l: string) => l.trim());
+                                                                                return lines.map((line: string, idx: number) => {
+                                                                                    const trimmed = line.trim();
+                                                                                    
+                                                                                    // Main section headers (no colon, all caps or title case without value)
+                                                                                    if (!trimmed.includes(':') || trimmed.match(/^[A-Z][a-z\s]+$/)) {
+                                                                                        return (
+                                                                                            <p key={idx} style={{
+                                                                                                fontWeight: '700',
+                                                                                                color: '#1e40af',
+                                                                                                fontSize: '12px',
+                                                                                                margin: idx === 0 ? '0 0 12px 0' : '16px 0 12px 0',
+                                                                                                textTransform: 'uppercase',
+                                                                                                letterSpacing: '0.5px'
+                                                                                            }}>
+                                                                                                {trimmed}
+                                                                                            </p>
+                                                                                        );
+                                                                                    }
+                                                                                    
+                                                                                    // Key-value pairs
+                                                                                    const colonIndex = trimmed.indexOf(':');
+                                                                                    if (colonIndex > 0) {
+                                                                                        const key = trimmed.substring(0, colonIndex).trim();
+                                                                                        const value = trimmed.substring(colonIndex + 1).trim();
+                                                                                        
+                                                                                        return (
+                                                                                            <div key={idx} style={{ marginBottom: '8px', paddingLeft: '0' }}>
+                                                                                                <p style={{ margin: 0 }}>
+                                                                                                    <span style={{ 
+                                                                                                        fontWeight: '600', 
+                                                                                                        color: '#0c4a6e',
+                                                                                                        fontSize: '11px'
+                                                                                                    }}>
+                                                                                                        {key}:
+                                                                                                    </span>
+                                                                                                    <span style={{ 
+                                                                                                        color: '#475569',
+                                                                                                        fontSize: '11px',
+                                                                                                        marginLeft: '6px'
+                                                                                                    }}>
+                                                                                                        {value}
+                                                                                                    </span>
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+                                                                                    
+                                                                                    // Regular text
+                                                                                    return (
+                                                                                        <p key={idx} style={{ 
+                                                                                            margin: '6px 0', 
+                                                                                            color: '#64748b',
+                                                                                            fontSize: '11px'
+                                                                                        }}>
+                                                                                            {trimmed}
+                                                                                        </p>
+                                                                                    );
+                                                                                });
+                                                                            })()}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                {applicant.applied_at && (
+                                                                    <div style={{ padding: '8px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                                        <p style={{ margin: 0, color: '#64748b', fontSize: '10px' }}>
+                                                                            <span style={{ fontWeight: '600' }}>📅 Applied:</span> {formatDate(applicant.applied_at)}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1953,6 +2237,24 @@ export function ManageJobs() {
                                                                                                     </p>
                                                                                                 ))}
                                                                                             </div>
+                                                                                            {round.comments && (
+                                                                                                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '2px solid #86efac' }}>
+                                                                                                    <p style={{ fontWeight: '700', color: '#16a34a', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                                                                    <p style={{ 
+                                                                                                        color: '#475569', 
+                                                                                                        margin: 0, 
+                                                                                                        fontSize: '11px',
+                                                                                                        lineHeight: '1.5',
+                                                                                                        padding: '8px 12px',
+                                                                                                        background: '#dcfce7',
+                                                                                                        borderRadius: '6px',
+                                                                                                        whiteSpace: 'pre-wrap',
+                                                                                                        wordBreak: 'break-word'
+                                                                                                    }}>
+                                                                                                        {round.comments}
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                            )}
                                                                                             {(() => {
                                                                                                 const scores = Object.values(round.scores) as number[];
                                                                                                 const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
@@ -2055,6 +2357,24 @@ export function ManageJobs() {
                                                                                                 </p>
                                                                                             ))}
                                                                                         </div>
+                                                                                        {round.comments && (
+                                                                                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                                                                                <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                                                                <p style={{ 
+                                                                                                    color: '#475569', 
+                                                                                                    margin: 0, 
+                                                                                                    fontSize: '11px',
+                                                                                                    lineHeight: '1.5',
+                                                                                                    padding: '8px 12px',
+                                                                                                    background: '#f8fafc',
+                                                                                                    borderRadius: '6px',
+                                                                                                    whiteSpace: 'pre-wrap',
+                                                                                                    wordBreak: 'break-word'
+                                                                                                }}>
+                                                                                                    {round.comments}
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        )}
                                                                                         {(() => {
                                                                                             const scores = Object.values(round.scores) as number[];
                                                                                             const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
@@ -2631,6 +2951,24 @@ export function ManageJobs() {
                                                                                         </p>
                                                                                     ))}
                                                                                 </div>
+                                                                                {round.comments && (
+                                                                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                                                        <p style={{ 
+                                                                                            color: '#475569', 
+                                                                                            margin: 0, 
+                                                                                            fontSize: '11px',
+                                                                                            lineHeight: '1.5',
+                                                                                            padding: '8px 12px',
+                                                                                            background: '#f8fafc',
+                                                                                            borderRadius: '6px',
+                                                                                            whiteSpace: 'pre-wrap',
+                                                                                            wordBreak: 'break-word'
+                                                                                        }}>
+                                                                                            {round.comments}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
                                                                                 {(() => {
                                                                                     const scores = Object.values(round.scores) as number[];
                                                                                     const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
@@ -2935,6 +3273,24 @@ export function ManageJobs() {
                                                                                         </p>
                                                                                     ))}
                                                                                 </div>
+                                                                                {round.comments && (
+                                                                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                                                        <p style={{ 
+                                                                                            color: '#475569', 
+                                                                                            margin: 0, 
+                                                                                            fontSize: '11px',
+                                                                                            lineHeight: '1.5',
+                                                                                            padding: '8px 12px',
+                                                                                            background: '#f8fafc',
+                                                                                            borderRadius: '6px',
+                                                                                            whiteSpace: 'pre-wrap',
+                                                                                            wordBreak: 'break-word'
+                                                                                        }}>
+                                                                                            {round.comments}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
                                                                                 {(() => {
                                                                                     const scores = Object.values(round.scores) as number[];
                                                                                     const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
@@ -3239,6 +3595,24 @@ export function ManageJobs() {
                                                                                         </p>
                                                                                     ))}
                                                                                 </div>
+                                                                                {round.comments && (
+                                                                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                                                        <p style={{ 
+                                                                                            color: '#475569', 
+                                                                                            margin: 0, 
+                                                                                            fontSize: '11px',
+                                                                                            lineHeight: '1.5',
+                                                                                            padding: '8px 12px',
+                                                                                            background: '#f8fafc',
+                                                                                            borderRadius: '6px',
+                                                                                            whiteSpace: 'pre-wrap',
+                                                                                            wordBreak: 'break-word'
+                                                                                        }}>
+                                                                                            {round.comments}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
                                                                                 {(() => {
                                                                                     const scores = Object.values(round.scores) as number[];
                                                                                     const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
@@ -3687,6 +4061,102 @@ export function ManageJobs() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showReviewModal && selectedApplicant && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 50
+                }}>
+                    <div style={{
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        padding: '20px 24px',
+                        width: 'min(420px, 90vw)',
+                        boxShadow: '0 20px 60px rgba(15, 23, 42, 0.25)',
+                        display: 'grid',
+                        gap: '12px'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#0f172a' }}>Ask for decision review</h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+                                    Send {selectedApplicant.name}&apos;s profile to a reviewer to mark Selected / Rejected / Interview.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => { setShowReviewModal(null); setReviewEmail(''); setSelectedApplicant(null); }}
+                                style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    cursor: 'pointer',
+                                    color: '#94a3b8',
+                                    padding: '4px'
+                                }}
+                            >
+                                <X style={{ width: '16px', height: '16px' }} />
+                            </button>
+                        </div>
+
+                        <div style={{ fontSize: '12px', color: '#0f172a', background: '#f8fafc', borderRadius: '8px', padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontWeight: 600 }}>{selectedApplicant.name}</div>
+                            <div style={{ fontSize: '11px', color: '#64748b' }}>{selectedApplicant.email}</div>
+                        </div>
+
+                        <label style={{ display: 'grid', gap: '6px', fontSize: '13px', color: '#0f172a' }}>
+                            Reviewer email
+                            <input
+                                type="email"
+                                value={reviewEmail}
+                                onChange={(e) => setReviewEmail(e.target.value)}
+                                placeholder="reviewer@example.com"
+                                style={{
+                                    padding: '10px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e2e8f0',
+                                    fontSize: '13px',
+                                    outline: 'none'
+                                }}
+                                onFocus={(e) => {
+                                    e.currentTarget.style.borderColor = '#2563eb';
+                                    e.currentTarget.style.boxShadow = '0 0 0 1px rgba(37, 99, 235, 0.2)';
+                                }}
+                                onBlur={(e) => {
+                                    e.currentTarget.style.borderColor = '#e2e8f0';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            />
+                        </label>
+
+                        <button
+                            onClick={submitReviewRequest}
+                            disabled={sendingReview || !reviewEmail}
+                            style={{
+                                marginTop: '4px',
+                                padding: '10px 14px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                background: sendingReview ? 'linear-gradient(to right, #93c5fd, #60a5fa)' : 'linear-gradient(to right, #2563eb, #1d4ed8)',
+                                color: '#ffffff',
+                                fontWeight: 600,
+                                fontSize: '14px',
+                                cursor: sendingReview || !reviewEmail ? 'not-allowed' : 'pointer',
+                                opacity: sendingReview || !reviewEmail ? 0.8 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            {sendingReview ? 'Sending review request...' : 'Send review request'}
+                        </button>
                     </div>
                 </div>
             )}
@@ -4143,6 +4613,26 @@ const ApplicantCard = ({
                                                 ))}
                                             </div>
                                             
+                                            {/* Show comments if available */}
+                                            {round.comments && (
+                                                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '2px solid #86efac' }}>
+                                                    <p style={{ fontWeight: '700', color: '#16a34a', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                    <p style={{ 
+                                                        color: '#475569', 
+                                                        margin: 0, 
+                                                        fontSize: '11px',
+                                                        lineHeight: '1.5',
+                                                        padding: '8px 12px',
+                                                        background: '#dcfce7',
+                                                        borderRadius: '6px',
+                                                        whiteSpace: 'pre-wrap',
+                                                        wordBreak: 'break-word'
+                                                    }}>
+                                                        {round.comments}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            
                                             {/* Show average score */}
                                             {(() => {
                                                 const scores = Object.values(round.scores) as number[];
@@ -4239,6 +4729,42 @@ const ApplicantCard = ({
                                                 </p>
                                             ))}
                                         </div>
+                                        {round.comments && (
+                                            <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                                <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>💬 Comments:</p>
+                                                <p style={{ 
+                                                    color: '#475569', 
+                                                    margin: 0, 
+                                                    fontSize: '11px',
+                                                    lineHeight: '1.5',
+                                                    padding: '8px 12px',
+                                                    background: '#f8fafc',
+                                                    borderRadius: '6px',
+                                                    whiteSpace: 'pre-wrap',
+                                                    wordBreak: 'break-word'
+                                                }}>
+                                                    {round.comments}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {(() => {
+                                            const scores = Object.values(round.scores) as number[];
+                                            const avg = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+                                            return (
+                                                <p style={{ 
+                                                    marginTop: '8px', 
+                                                    padding: '6px 10px',
+                                                    background: '#f1f5f9',
+                                                    borderRadius: '6px',
+                                                    color: '#475569', 
+                                                    fontWeight: '700',
+                                                    fontSize: '11px',
+                                                    margin: '8px 0 0 0'
+                                                }}>
+                                                    Average Score: {avg}/5
+                                                </p>
+                                            );
+                                        })()}
                                     </div>
                                 )}
                                 {round.reason && (

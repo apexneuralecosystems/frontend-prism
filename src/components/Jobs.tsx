@@ -246,6 +246,15 @@ export function Jobs() {
     const [userData, setUserData] = useState<any>(null);
     const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
     const [processingJobId, setProcessingJobId] = useState<string | null>(null);
+    const [showApplyForm, setShowApplyForm] = useState(false);
+    const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+    const [applyForm, setApplyForm] = useState({
+        currentCtc: '',
+        expectedCtc: '',
+        noticePeriod: '',
+        expectedDoj: ''
+    });
+    const [formError, setFormError] = useState<string | null>(null);
 
     useEffect(() => {
         // Check authentication and user type
@@ -317,7 +326,7 @@ export function Jobs() {
         }
     };
 
-    const handleApply = async (jobId: string) => {
+    const handleApply = async (jobId: string, additionalDetails?: string) => {
         if (!userData || processingJobId) return; // Prevent multiple clicks
 
         setProcessingJobId(jobId); // Set processing state
@@ -360,7 +369,8 @@ export function Jobs() {
                     body: JSON.stringify({
                         name: userData.name,
                         email: userData.email,
-                        resume_url: resumeUrl
+                        resume_url: resumeUrl,
+                        additional_details: additionalDetails || ''
                     })
                 },
                 navigate
@@ -409,6 +419,38 @@ export function Jobs() {
         } finally {
             setProcessingJobId(null);
         }
+    };
+
+    const openApplyForm = (jobId: string) => {
+        setSelectedJobId(jobId);
+        setFormError(null);
+        setShowApplyForm(true);
+    };
+
+    const submitApplyForm = async () => {
+        if (!selectedJobId) return;
+        if (!applyForm.currentCtc || !applyForm.expectedCtc || !applyForm.noticePeriod || !applyForm.expectedDoj) {
+            setFormError('Please fill all fields');
+            return;
+        }
+
+        const additionalDetails = [
+            `Current CTC: ${applyForm.currentCtc}`,
+            `Expected CTC: ${applyForm.expectedCtc}`,
+            `Notice Period: ${applyForm.noticePeriod}`,
+            `Expected Date of Joining: ${applyForm.expectedDoj}`
+        ].join('\n');
+
+        setShowApplyForm(false);
+        await handleApply(selectedJobId, additionalDetails);
+        setApplyForm({ currentCtc: '', expectedCtc: '', noticePeriod: '', expectedDoj: '' });
+        setSelectedJobId(null);
+    };
+
+    const closeApplyForm = () => {
+        setShowApplyForm(false);
+        setSelectedJobId(null);
+        setFormError(null);
     };
 
     const handleLogout = async () => {
@@ -676,7 +718,7 @@ export function Jobs() {
                                         <JobCard
                                             key={job.job_id}
                                             job={job}
-                                            onApply={handleApply}
+                                                onApply={openApplyForm}
                                             isApplied={appliedJobIds.has(job.job_id)}
                                             isProcessing={processingJobId === job.job_id}
                                         />
@@ -734,6 +776,69 @@ export function Jobs() {
                     }
                 })()}
             </div>
+
+            {showApplyForm && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: 'min(480px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', display: 'grid', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0 }}>Application Details</h3>
+                            <button onClick={closeApplyForm} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                                <X />
+                            </button>
+                        </div>
+
+                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
+                            Current CTC
+                            <input
+                                type="number"
+                                value={applyForm.currentCtc}
+                                onChange={(e) => setApplyForm(f => ({ ...f, currentCtc: e.target.value }))}
+                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            />
+                        </label>
+
+                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
+                            Expected CTC
+                            <input
+                                type="number"
+                                value={applyForm.expectedCtc}
+                                onChange={(e) => setApplyForm(f => ({ ...f, expectedCtc: e.target.value }))}
+                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            />
+                        </label>
+
+                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
+                            Notice Period
+                            <input
+                                type="text"
+                                placeholder="e.g., 30 days"
+                                value={applyForm.noticePeriod}
+                                onChange={(e) => setApplyForm(f => ({ ...f, noticePeriod: e.target.value }))}
+                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            />
+                        </label>
+
+                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
+                            Expected Date of Joining
+                            <input
+                                type="date"
+                                value={applyForm.expectedDoj}
+                                onChange={(e) => setApplyForm(f => ({ ...f, expectedDoj: e.target.value }))}
+                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                            />
+                        </label>
+
+                        {formError && <div style={{ color: '#dc2626', fontSize: '13px' }}>{formError}</div>}
+
+                        <button
+                            onClick={submitApplyForm}
+                            style={{ padding: '12px', borderRadius: '8px', border: 'none', background: 'linear-gradient(to right, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                            Submit
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Add keyframe animations */}
             <style>{`

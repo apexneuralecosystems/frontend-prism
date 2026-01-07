@@ -22,6 +22,7 @@ export function InterviewFeedback() {
         enthusiasm: '',
         teamwork: '',
         attitude: '',
+        comments: '',
         interview_outcome: ''
     });
     
@@ -56,7 +57,7 @@ export function InterviewFeedback() {
         }
     };
     
-    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -105,6 +106,7 @@ export function InterviewFeedback() {
                     enthusiasm: parseInt(formData.enthusiasm) || 0,
                     teamwork: parseInt(formData.teamwork) || 0,
                     attitude: parseInt(formData.attitude) || 0,
+                    comments: formData.comments || '',
                     interview_outcome: formData.interview_outcome
                 })
             });
@@ -717,10 +719,72 @@ export function InterviewFeedback() {
                                 </div>
                                 
                                 <div style={{
+                                    background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)',
+                                    border: '2px solid #6366f1',
+                                    borderRadius: '16px',
+                                    padding: '24px',
+                                    marginTop: '24px'
+                                }}>
+                                    <h3 style={{
+                                        fontSize: '18px',
+                                        fontWeight: '700',
+                                        color: '#312e81',
+                                        margin: '0 0 16px 0',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px'
+                                    }}>
+                                        <span style={{ fontSize: '24px' }}>💬</span>
+                                        Comments
+                                    </h3>
+                                    
+                                    <label style={{
+                                        display: 'block',
+                                        fontSize: '13px',
+                                        fontWeight: '600',
+                                        color: '#1e293b',
+                                        marginBottom: '8px'
+                                    }}>
+                                        Additional Comments
+                                    </label>
+                                    <textarea
+                                        name="comments"
+                                        value={formData.comments}
+                                        onChange={handleChange}
+                                        placeholder="Enter any additional comments, observations, or feedback about the candidate..."
+                                        rows={5}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px 16px',
+                                            border: '2px solid #e2e8f0',
+                                            borderRadius: '10px',
+                                            fontSize: '14px',
+                                            fontWeight: '500',
+                                            color: '#1e293b',
+                                            background: 'white',
+                                            resize: 'vertical',
+                                            fontFamily: 'inherit',
+                                            transition: 'all 0.2s ease',
+                                            outline: 'none',
+                                            minHeight: '120px'
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = '#667eea';
+                                            e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = '#e2e8f0';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
+                                    />
+                                </div>
+                                
+                                <div style={{
                                     background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
                                     border: '2px solid #f59e0b',
                                     borderRadius: '16px',
-                                    padding: '24px'
+                                    padding: '24px',
+                                    marginTop: '24px'
                                 }}>
                                     <h3 style={{
                                         fontSize: '18px',

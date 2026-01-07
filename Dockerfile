@@ -1,17 +1,9 @@
-# ---------- Step 1: Build ----------
-FROM node:18-alpine AS build
-
+# Stage 1: build
+FROM node:20-alpine as build
 WORKDIR /app
-
-# Copy package files first (better caching)
-COPY package.json package-lock.json ./
-
+COPY package*.json ./
 RUN npm install
-
-# Copy rest of the frontend code
 COPY . .
-
-# Build Vite app
 RUN npm run build
 
 
@@ -23,6 +15,9 @@ RUN rm -rf /usr/share/nginx/html/*
 
 # Copy built files from previous step
 COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose frontend port
 EXPOSE 80
