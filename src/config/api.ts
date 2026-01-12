@@ -1,5 +1,6 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555' || 'https://prism.apexneural.cloud';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555' || 'https://prism.apexneural.cloud';  
+//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prism.backend.apexneural.cloud';  for server
 
 export const API_ENDPOINTS = {
   DEMO_REQUEST: `${API_BASE_URL}/api/demo-request`,
@@ -17,6 +18,11 @@ export const API_ENDPOINTS = {
   USER_PROFILE: `${API_BASE_URL}/api/user-profile`,
   ORGANIZATION_PROFILE: `${API_BASE_URL}/api/organization-profile`,
   ORGANIZATION_TEAMS: `${API_BASE_URL}/api/organization-teams`,
+  ORGANIZATION_MEMBERS: `${API_BASE_URL}/api/organization/members`,
+  INVITE_MEMBER: `${API_BASE_URL}/api/organization/invite-member`,
+  INVITE_MEMBERS_BULK: `${API_BASE_URL}/api/organization/invite-members-bulk`,
+  RESEND_INVITE: `${API_BASE_URL}/api/organization/resend-invite`,
+  RESPOND_INVITE: `${API_BASE_URL}/api/organization/respond-invite`,
   ORGANIZATION_JOBPOST: `${API_BASE_URL}/api/organization-jobpost`,
   ORGANIZATION_JOBPOST_ONGOING: `${API_BASE_URL}/api/organization-jobpost/ongoing`,
   ORGANIZATION_JOBPOST_CLOSED: `${API_BASE_URL}/api/organization-jobpost/closed`,

@@ -11,6 +11,7 @@ import { ScheduleInterview } from "./components/ScheduleInterview";
 import { InterviewFeedback } from "./components/InterviewFeedback";
 import { OfferResponse } from "./components/OfferResponse";
 import { ReviewForm } from "./components/ReviewForm";
+import { InviteAccept } from "./components/InviteAccept";
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="/interview-feedback" element={<InterviewFeedback />} />
         <Route path="/offer-response" element={<OfferResponse />} />
         <Route path="/review-form" element={<ReviewForm />} />
+        <Route path="/invite-accept/:token" element={<InviteAccept />} />
       </Routes>
     </Router>
   );

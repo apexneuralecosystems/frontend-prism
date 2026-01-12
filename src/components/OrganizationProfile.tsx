@@ -137,6 +137,10 @@ const validateYear = (year: string) => {
 export function OrganizationProfile() {
     const navigate = useNavigate();
     const [data, setData] = useState<OrganizationProfileData>(INITIAL_DATA);
+    const [members, setMembers] = useState<any[]>([]);
+    const [inviteForm, setInviteForm] = useState({ name: '', email: '' });
+    const [inviteList, setInviteList] = useState<Array<{ name: string; email: string }>>([]);
+    const [isOwner, setIsOwner] = useState(true);
 
     useEffect(() => {
         // Check authentication
@@ -156,6 +160,7 @@ export function OrganizationProfile() {
                 return;
             }
             setData(prev => ({ ...prev, email: parsedUser.email, companyName: parsedUser.name || prev.companyName }));
+            setIsOwner(!parsedUser.is_org_member || parsedUser.role === 'owner');
         }
 
         // Fetch profile data
@@ -212,6 +217,33 @@ export function OrganizationProfile() {
         };
 
         fetchProfile();
+        
+        // Fetch members if owner
+        const fetchMembers = async () => {
+            try {
+                const userData = localStorage.getItem('user');
+                if (userData) {
+                    const parsedUser = JSON.parse(userData);
+                    if (parsedUser.is_org_member && parsedUser.role !== 'owner') {
+                        return; // Members can't view members list
+                    }
+                }
+                
+                const res = await authenticatedFetch(
+                    API_ENDPOINTS.ORGANIZATION_MEMBERS,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (res?.ok) {
+                    const result = await res.json();
+                    setMembers(result.members || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch members:', err);
+            }
+        };
+        
+        fetchMembers();
     }, [navigate]);
 
     const [isEditMode, setIsEditMode] = useState(false);
@@ -485,6 +517,124 @@ export function OrganizationProfile() {
                 delete newErrors[field];
                 return newErrors;
             });
+        }
+    };
+
+    const addToInviteList = () => {
+        if (!inviteForm.name || !inviteForm.email) {
+            setMessage({ type: 'error', text: 'Please fill in both name and email' });
+            return;
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(inviteForm.email)) {
+            setMessage({ type: 'error', text: 'Please enter a valid email address' });
+            return;
+        }
+        
+        // Check if email already in list
+        if (inviteList.some(item => item.email === inviteForm.email)) {
+            setMessage({ type: 'error', text: 'This email is already in the invite list' });
+            return;
+        }
+        
+        setInviteList(prev => [...prev, { name: inviteForm.name, email: inviteForm.email }]);
+        setInviteForm({ name: '', email: '' });
+        setMessage(null);
+    };
+
+    const removeFromInviteList = (index: number) => {
+        setInviteList(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleInviteMembers = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (inviteList.length === 0) {
+            setMessage({ type: 'error', text: 'Please add at least one member to invite' });
+            return;
+        }
+        
+        setLoading(true);
+        setMessage(null);
+        
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.INVITE_MEMBERS_BULK,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ members: inviteList })
+                },
+                navigate
+            );
+            
+            if (res?.ok) {
+                const result = await res.json();
+                const successCount = result.results?.success?.length || 0;
+                const failedCount = result.results?.failed?.length || 0;
+                
+                if (failedCount > 0) {
+                    const failedEmails = result.results.failed.map((f: any) => `${f.email} (${f.reason})`).join(', ');
+                    setMessage({ 
+                        type: 'error', 
+                        text: `${successCount} invited, ${failedCount} failed: ${failedEmails}` 
+                    });
+                } else {
+                    setMessage({ type: 'success', text: `Successfully invited ${successCount} member(s)!` });
+                }
+                
+                setTimeout(() => setMessage(null), 5000);
+                setInviteList([]);
+                
+                // Refresh members list
+                const membersRes = await authenticatedFetch(
+                    API_ENDPOINTS.ORGANIZATION_MEMBERS,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (membersRes?.ok) {
+                    const membersResult = await membersRes.json();
+                    setMembers(membersResult.members || []);
+                }
+            } else {
+                const error = await res?.json();
+                setMessage({ type: 'error', text: error.detail || 'Failed to send invitations' });
+            }
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.message || 'Failed to send invitations' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResendInvite = async (memberEmail: string) => {
+        setLoading(true);
+        setMessage(null);
+        
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.RESEND_INVITE,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ member_email: memberEmail })
+                },
+                navigate
+            );
+            
+            if (res?.ok) {
+                setMessage({ type: 'success', text: 'Invitation resent successfully!' });
+                setTimeout(() => setMessage(null), 3000);
+            } else {
+                const error = await res?.json();
+                setMessage({ type: 'error', text: error.detail || 'Failed to resend invitation' });
+            }
+        } catch (err: any) {
+            setMessage({ type: 'error', text: err.message || 'Failed to resend invitation' });
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1117,6 +1267,251 @@ export function OrganizationProfile() {
         );
     };
 
+    const renderTeamMembers = () => {
+        if (!isOwner) {
+            return (
+                <p style={{ color: '#64748b', textAlign: 'center', padding: '20px' }}>
+                    Only organization owners can manage team members.
+                </p>
+            );
+        }
+
+        return (
+            <div>
+                {/* Invite Form */}
+                <div style={{ marginBottom: '30px', padding: '20px', background: '#f8fafc', borderRadius: '8px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '15px' }}>Invite Team Members</h3>
+                    
+                    {/* Add Member Form */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '10px', alignItems: 'end' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '5px' }}>
+                                    Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={inviteForm.name}
+                                    onChange={(e) => setInviteForm(prev => ({ ...prev, name: e.target.value }))}
+                                    onKeyPress={(e) => e.key === 'Enter' && addToInviteList()}
+                                    placeholder="Member name"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '6px',
+                                        fontSize: '14px'
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '5px' }}>
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={inviteForm.email}
+                                    onChange={(e) => setInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                                    onKeyPress={(e) => e.key === 'Enter' && addToInviteList()}
+                                    placeholder="member@example.com"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '6px',
+                                        fontSize: '14px'
+                                    }}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={addToInviteList}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                Add to List
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Invite List */}
+                    {inviteList.length > 0 && (
+                        <div style={{ marginBottom: '20px', padding: '15px', background: 'white', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#334155' }}>
+                                    Invite List ({inviteList.length})
+                                </h4>
+                                <button
+                                    type="button"
+                                    onClick={() => setInviteList([])}
+                                    style={{
+                                        padding: '4px 12px',
+                                        background: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px'
+                                    }}
+                                >
+                                    Clear All
+                                </button>
+                            </div>
+                            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                {inviteList.map((item, index) => (
+                                    <div key={index} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '8px',
+                                        marginBottom: '5px',
+                                        background: '#f8fafc',
+                                        borderRadius: '4px'
+                                    }}>
+                                        <div>
+                                            <span style={{ fontWeight: '500', marginRight: '10px' }}>{item.name}</span>
+                                            <span style={{ color: '#64748b', fontSize: '13px' }}>{item.email}</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFromInviteList(index)}
+                                            style={{
+                                                padding: '4px 8px',
+                                                background: '#fee2e2',
+                                                color: '#991b1b',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '12px'
+                                            }}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Send Invitations Button */}
+                    {inviteList.length > 0 && (
+                        <form onSubmit={handleInviteMembers}>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                style={{
+                                    padding: '12px 24px',
+                                    background: '#667eea',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    opacity: loading ? 0.6 : 1,
+                                    width: '100%'
+                                }}
+                            >
+                                {loading ? 'Sending Invitations...' : `Send Invitations to ${inviteList.length} Member(s)`}
+                            </button>
+                        </form>
+                    )}
+                </div>
+
+                {/* Members List */}
+                <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '15px' }}>Team Members</h3>
+                    {members.length === 0 ? (
+                        <p style={{ color: '#64748b', textAlign: 'center', padding: '20px' }}>
+                            No team members yet. Invite someone to get started!
+                        </p>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0' }}>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#334155' }}>Name</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#334155' }}>Email</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#334155' }}>Role</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#334155' }}>Status</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#334155' }}>Invited At</th>
+                                        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#334155' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {members.map((member, index) => (
+                                        <tr key={member._id || index} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                            <td style={{ padding: '12px', fontSize: '14px', color: '#0f172a' }}>{member.member_name}</td>
+                                            <td style={{ padding: '12px', fontSize: '14px', color: '#0f172a' }}>{member.member_email}</td>
+                                            <td style={{ padding: '12px', fontSize: '14px', color: '#0f172a' }}>
+                                                <span style={{
+                                                    padding: '4px 8px',
+                                                    borderRadius: '4px',
+                                                    background: member.role === 'owner' ? '#dbeafe' : '#e0e7ff',
+                                                    color: member.role === 'owner' ? '#1e40af' : '#3730a3',
+                                                    fontSize: '12px',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    {member.role}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px', fontSize: '14px', color: '#0f172a' }}>
+                                                <span style={{
+                                                    padding: '4px 8px',
+                                                    borderRadius: '4px',
+                                                    background: member.status === 'accepted' ? '#d1fae5' : member.status === 'pending' ? '#fef3c7' : member.status === 'rejected' ? '#fee2e2' : '#e5e7eb',
+                                                    color: member.status === 'accepted' ? '#065f46' : member.status === 'pending' ? '#92400e' : member.status === 'rejected' ? '#991b1b' : '#374151',
+                                                    fontSize: '12px',
+                                                    fontWeight: '500',
+                                                    textTransform: 'capitalize'
+                                                }}>
+                                                    {member.status || 'pending'}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px', fontSize: '13px', color: '#64748b' }}>
+                                                {member.invited_at ? new Date(member.invited_at).toLocaleDateString() : '-'}
+                                            </td>
+                                            <td style={{ padding: '12px', fontSize: '14px' }}>
+                                                {member.status === 'pending' && (
+                                                    <button
+                                                        onClick={() => handleResendInvite(member.member_email)}
+                                                        disabled={loading}
+                                                        style={{
+                                                            padding: '6px 12px',
+                                                            background: '#667eea',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '4px',
+                                                            cursor: loading ? 'not-allowed' : 'pointer',
+                                                            fontSize: '12px',
+                                                            fontWeight: '500',
+                                                            opacity: loading ? 0.6 : 1
+                                                        }}
+                                                    >
+                                                        Resend
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     const renderEmployees = () => {
         const labelStyle = {
             display: 'block',
@@ -1405,7 +1800,7 @@ export function OrganizationProfile() {
                             </p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {!isEditMode ? (
+                            {!isEditMode && isOwner ? (
                                 <button
                                     onClick={() => setIsEditMode(true)}
                                     onMouseEnter={() => setEditHovered(true)}
@@ -1428,7 +1823,7 @@ export function OrganizationProfile() {
                                     <Pencil style={{ width: '16px', height: '16px' }} />
                                     Edit Profile
                                 </button>
-                            ) : (
+                            ) : isOwner ? (
                                 <button
                                     onClick={handleSave}
                                     disabled={loading}
@@ -1469,7 +1864,7 @@ export function OrganizationProfile() {
                                         </>
                                     )}
                                 </button>
-                            )}
+                            ) : null}
                             <button
                                 onClick={handleLogout}
                                 onMouseEnter={() => setLogoutHovered(true)}
@@ -1554,6 +1949,12 @@ export function OrganizationProfile() {
                     <SectionCard title="Our Employees" icon={Users}>
                         {renderEmployees()}
                     </SectionCard>
+
+                    {isOwner && (
+                        <SectionCard title="Team Members" icon={Users}>
+                            {renderTeamMembers()}
+                        </SectionCard>
+                    )}
 
                 </div>
             </div>

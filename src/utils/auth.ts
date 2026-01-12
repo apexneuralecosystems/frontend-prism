@@ -5,44 +5,64 @@
 
 import { API_ENDPOINTS } from '../config/api';
 
+// Flag to prevent concurrent refresh calls
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
 /**
  * Refresh the access token using the refresh token
+ * Prevents multiple concurrent refresh calls
  * @returns New access token or null if refresh fails
  */
 export async function refreshAccessToken(): Promise<string | null> {
-    try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        
-        if (!refreshToken) {
-            return null;
-        }
-
-        const response = await fetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                refresh_token: refreshToken
-            })
-        });
-
-        if (!response.ok) {
-            return null;
-        }
-
-        const data = await response.json();
-        
-        if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
-            return data.access_token;
-        }
-
-        return null;
-    } catch (error) {
-        console.error('Token refresh error:', error);
-        return null;
+    // If already refreshing, return the existing promise
+    if (isRefreshing && refreshPromise) {
+        return refreshPromise;
     }
+
+    // Start new refresh
+    isRefreshing = true;
+    refreshPromise = (async () => {
+        try {
+            const refreshToken = localStorage.getItem('refresh_token');
+            
+            if (!refreshToken) {
+                return null;
+            }
+
+            const response = await fetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    refresh_token: refreshToken
+                })
+            });
+
+            if (!response.ok) {
+                return null;
+            }
+
+            const data = await response.json();
+            
+            if (data.access_token) {
+                localStorage.setItem('access_token', data.access_token);
+                return data.access_token;
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            return null;
+        } finally {
+            // Reset flags after refresh completes
+            isRefreshing = false;
+            refreshPromise = null;
+        }
+    })();
+
+    return refreshPromise;
 }
 
 /**
