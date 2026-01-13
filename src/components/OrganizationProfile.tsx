@@ -2393,7 +2393,7 @@ export function OrganizationProfile() {
                             color: '#64748b',
                             marginBottom: '20px'
                         }}>
-                            1 credit = $10 USD
+                            1 credit = $1 USD
                         </p>
                         
                         <label style={{
@@ -2436,7 +2436,7 @@ export function OrganizationProfile() {
                                 color: '#0f172a',
                                 margin: 0
                             }}>
-                                Total: ${numCreditsToBuy * 10} USD
+                                Total: ${numCreditsToBuy * 1} USD
                             </p>
                         </div>
                         
