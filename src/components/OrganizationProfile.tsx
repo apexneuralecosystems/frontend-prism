@@ -284,6 +284,17 @@ export function OrganizationProfile() {
         };
         
         const fetchPaymentHistory = async () => {
+            // Only fetch payment history if user is owner
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                const parsedUser = JSON.parse(userData);
+                const userIsOwner = !parsedUser.is_org_member || parsedUser.role === 'owner';
+                if (!userIsOwner) {
+                    setPaymentHistory([]);
+                    return;
+                }
+            }
+            
             try {
                 const res = await authenticatedFetch(
                     API_ENDPOINTS.PAYMENT_HISTORY,
@@ -2135,8 +2146,9 @@ export function OrganizationProfile() {
                         </SectionCard>
                     )}
 
-                    {/* Payment Transaction History - Visible to all org members */}
-                    <SectionCard title="Transaction History" icon={CreditCard}>
+                    {/* Payment Transaction History - Owner only */}
+                    {isOwner && (
+                        <SectionCard title="Transaction History" icon={CreditCard}>
                         <div style={{
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -2334,6 +2346,7 @@ export function OrganizationProfile() {
                             </div>
                         )}
                     </SectionCard>
+                    )}
 
                 </div>
             </div>
