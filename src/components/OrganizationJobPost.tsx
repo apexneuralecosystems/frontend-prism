@@ -638,7 +638,15 @@ export function OrganizationJobPost() {
                 fetchAllJobs();
             } else {
                 const error = await res.json();
-                setMessage({ type: 'error', text: error.detail || 'Failed to create job posting' });
+                // Check if it's a credits error
+                if (error.detail && error.detail.includes('credits')) {
+                    setMessage({ 
+                        type: 'error', 
+                        text: error.detail + ' Please go to your profile to purchase credits.' 
+                    });
+                } else {
+                    setMessage({ type: 'error', text: error.detail || 'Failed to create job posting' });
+                }
             }
         } catch (err) {
             console.error('Failed to create job post:', err);

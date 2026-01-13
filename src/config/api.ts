@@ -36,6 +36,10 @@ export const API_ENDPOINTS = {
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,
   UPLOAD: `${API_BASE_URL}/api/upload`,
   PARSE_RESUME: `${API_BASE_URL}/api/parse-resume`,
+  BUY_CREDITS: `${API_BASE_URL}/api/payments/buy-credits`,
+  CAPTURE_ORDER: `${API_BASE_URL}/api/payments/capture-order`,
+  ORGANIZATION_CREDITS: `${API_BASE_URL}/api/organization/credits`,
+  PAYMENT_HISTORY: `${API_BASE_URL}/api/organization/payment-history`,
 } as const;
 
 // Export the base URL for use in other files

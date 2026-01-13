@@ -1,24 +1,27 @@
-# Dependencies & builds
+# ==================== BUILD OUTPUT ====================
+# Production build (generated, should not be in git)
+dist/
+build/
+
+# ==================== DEPENDENCIES ====================
 node_modules/
-frontend/build/
-backend/static/uploads/
 
-# Caches
-__pycache__/
-*.pyc
-
-# Env/secrets
+# ==================== ENVIRONMENT & SECRETS ====================
 .env
 .env.local
 .env.*.local
 
-# Archives/unneeded
-deleted_files/
-auth-backend/
-
-# OS/editor
+# ==================== OS & EDITOR ====================
 .DS_Store
 Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-backend/credentials.json
-backend/token.json
+# ==================== LOGS ====================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

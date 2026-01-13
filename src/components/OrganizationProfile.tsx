@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Pencil, Save, X, Upload, CheckCircle, MapPin, Mail, Phone,
-    Briefcase, Globe, Users, Building2, Calendar, FileText, LogOut, Linkedin, Trash2
+    Briefcase, Globe, Users, Building2, Calendar, FileText, LogOut, Linkedin, Trash2, CreditCard
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
@@ -141,8 +141,29 @@ export function OrganizationProfile() {
     const [inviteForm, setInviteForm] = useState({ name: '', email: '' });
     const [inviteList, setInviteList] = useState<Array<{ name: string; email: string }>>([]);
     const [isOwner, setIsOwner] = useState(true);
+    const [credits, setCredits] = useState<number>(0);
+    const [showBuyCreditsModal, setShowBuyCreditsModal] = useState(false);
+    const [numCreditsToBuy, setNumCreditsToBuy] = useState<number>(1);
+    const [paymentLoading, setPaymentLoading] = useState(false);
+    const [paymentHistory, setPaymentHistory] = useState<Array<{
+        id: string;
+        amount: number;
+        currency: string;
+        num_credits: number;
+        description: string;
+        created_at: string;
+    }>>([]);
 
     useEffect(() => {
+        // Check if we're returning from a payment (check URL params or localStorage flag)
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentSuccess = urlParams.get('payment_success') === 'true' || localStorage.getItem('payment_success') === 'true';
+        if (paymentSuccess) {
+            localStorage.removeItem('payment_success');
+            // Remove the query param from URL
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+        
         // Check authentication
         const token = localStorage.getItem('access_token');
         const userData = localStorage.getItem('user');
@@ -244,6 +265,84 @@ export function OrganizationProfile() {
         };
         
         fetchMembers();
+        
+        // Fetch credits and payment history
+        const fetchCredits = async () => {
+            try {
+                const res = await authenticatedFetch(
+                    API_ENDPOINTS.ORGANIZATION_CREDITS,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (res?.ok) {
+                    const result = await res.json();
+                    setCredits(result.credits || 0);
+                }
+            } catch (err) {
+                console.error('Failed to fetch credits:', err);
+            }
+        };
+        
+        const fetchPaymentHistory = async () => {
+            try {
+                const res = await authenticatedFetch(
+                    API_ENDPOINTS.PAYMENT_HISTORY,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (res?.ok) {
+                    const result = await res.json();
+                    console.log('📊 Payment history fetched:', {
+                        total: result.total_transactions,
+                        transactions: result.transactions?.length || 0,
+                        data: result.transactions
+                    });
+                    setPaymentHistory(result.transactions || []);
+                } else {
+                    const errorData = await res?.json().catch(() => ({}));
+                    console.error('❌ Failed to fetch payment history:', {
+                        status: res?.status,
+                        error: errorData
+                    });
+                    // Still set empty array to show "no transactions" message
+                    setPaymentHistory([]);
+                }
+            } catch (err) {
+                console.error('❌ Error fetching payment history:', err);
+                // Still set empty array to show "no transactions" message
+                setPaymentHistory([]);
+            }
+        };
+        
+        // Fetch credits and payment history
+        const fetchAll = async () => {
+            await Promise.all([
+                fetchCredits(),
+                fetchPaymentHistory()
+            ]);
+        };
+        
+        fetchAll();
+        
+        // If returning from payment, refresh immediately
+        if (paymentSuccess) {
+            setTimeout(() => {
+                fetchAll();
+            }, 1000);
+        }
+        
+        // Refresh payment history when component becomes visible (e.g., returning from payment page)
+        const handleVisibilityChange = () => {
+            if (!document.hidden) {
+                fetchAll();
+            }
+        };
+        
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, [navigate]);
 
     const [isEditMode, setIsEditMode] = useState(false);
@@ -635,6 +734,43 @@ export function OrganizationProfile() {
             setMessage({ type: 'error', text: err.message || 'Failed to resend invitation' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleBuyCredits = async () => {
+        if (numCreditsToBuy < 1) {
+            setMessage({ type: 'error', text: 'Please select at least 1 credit' });
+            return;
+        }
+        
+        setPaymentLoading(true);
+        setMessage(null);
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.BUY_CREDITS,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ num_credits: numCreditsToBuy })
+                },
+                navigate
+            );
+            
+            if (res?.ok) {
+                const result = await res.json();
+                if (result.approval_url) {
+                    // Redirect to PayPal
+                    window.location.href = result.approval_url;
+                }
+            } else {
+                const error = await res?.json();
+                setMessage({ type: 'error', text: error.detail || 'Failed to create payment order' });
+                setPaymentLoading(false);
+            }
+        } catch (err) {
+            console.error('Failed to buy credits:', err);
+            setMessage({ type: 'error', text: 'Failed to initiate payment' });
+            setPaymentLoading(false);
         }
     };
 
@@ -1938,6 +2074,49 @@ export function OrganizationProfile() {
                         {renderBasicInfo()}
                     </SectionCard>
 
+                    {/* Credits Section - Visible to all org members */}
+                    <SectionCard title="Credits" icon={Briefcase}>
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '16px',
+                            padding: '16px',
+                            background: 'linear-gradient(135deg, #dbeafe, #e0f2fe)',
+                            borderRadius: '8px',
+                            border: '1px solid #bfdbfe'
+                        }}>
+                            <div>
+                                <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
+                                    Credits remaining for job postings
+                                </p>
+                                <p style={{ fontSize: '36px', fontWeight: '700', color: '#2563eb', margin: 0 }}>
+                                    {credits}
+                                </p>
+                            </div>
+                            
+                            {isOwner && (
+                                <button
+                                    onClick={() => setShowBuyCreditsModal(true)}
+                                    style={{
+                                        padding: '10px 20px',
+                                        background: '#2563eb',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: '500',
+                                        cursor: 'pointer',
+                                        transition: 'background 0.15s ease',
+                                        fontSize: '14px'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
+                                >
+                                    Buy Credits
+                                </button>
+                            )}
+                        </div>
+                    </SectionCard>
+
                     <SectionCard title="About Company" icon={FileText}>
                         {renderDescription()}
                     </SectionCard>
@@ -1956,8 +2135,344 @@ export function OrganizationProfile() {
                         </SectionCard>
                     )}
 
+                    {/* Payment Transaction History - Visible to all org members */}
+                    <SectionCard title="Transaction History" icon={CreditCard}>
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '16px'
+                        }}>
+                            <span style={{ fontSize: '14px', color: '#64748b' }}>
+                                {paymentHistory.length} transaction{paymentHistory.length !== 1 ? 's' : ''}
+                            </span>
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const res = await authenticatedFetch(
+                                            API_ENDPOINTS.PAYMENT_HISTORY,
+                                            { method: 'GET' },
+                                            navigate
+                                        );
+                                        if (res?.ok) {
+                                            const result = await res.json();
+                                            setPaymentHistory(result.transactions || []);
+                                            // Also refresh credits
+                                            const creditsRes = await authenticatedFetch(
+                                                API_ENDPOINTS.ORGANIZATION_CREDITS,
+                                                { method: 'GET' },
+                                                navigate
+                                            );
+                                            if (creditsRes?.ok) {
+                                                const creditsResult = await creditsRes.json();
+                                                setCredits(creditsResult.credits || 0);
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error('Failed to refresh payment history:', err);
+                                    }
+                                }}
+                                style={{
+                                    padding: '6px 12px',
+                                    background: '#f1f5f9',
+                                    color: '#334155',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    transition: 'background 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                                </svg>
+                                Refresh
+                            </button>
+                        </div>
+                        {paymentHistory.length === 0 ? (
+                            <p style={{
+                                color: '#94a3b8',
+                                fontStyle: 'italic',
+                                textAlign: 'center',
+                                padding: '20px'
+                            }}>
+                                No transactions yet. Purchase credits to see your transaction history here.
+                            </p>
+                        ) : (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '12px'
+                            }}>
+                                {paymentHistory.map((transaction) => {
+                                    const date = new Date(transaction.created_at);
+                                    const formattedDate = date.toLocaleDateString('en-US', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                    
+                                    return (
+                                        <div
+                                            key={transaction.id}
+                                            style={{
+                                                padding: '16px',
+                                                background: '#f8fafc',
+                                                borderRadius: '8px',
+                                                border: '1px solid #e2e8f0',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                transition: 'background 0.15s ease'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = '#f8fafc'}
+                                        >
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '12px',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                    {transaction.status === 'completed' ? (
+                                                        <CheckCircle style={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            color: '#16a34a',
+                                                            flexShrink: 0
+                                                        }} />
+                                                    ) : (
+                                                        <div style={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            borderRadius: '50%',
+                                                            background: transaction.status === 'created' ? '#fbbf24' : '#ef4444',
+                                                            flexShrink: 0,
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}>
+                                                            <div style={{
+                                                                width: '8px',
+                                                                height: '8px',
+                                                                borderRadius: '50%',
+                                                                background: '#ffffff'
+                                                            }} />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
+                                                        }}>
+                                                            <p style={{
+                                                                fontSize: '16px',
+                                                                fontWeight: '600',
+                                                                color: '#0f172a',
+                                                                margin: 0
+                                                            }}>
+                                                                {transaction.description || `Purchase ${transaction.num_credits} credit(s)`}
+                                                            </p>
+                                                            <span style={{
+                                                                padding: '2px 8px',
+                                                                borderRadius: '4px',
+                                                                fontSize: '11px',
+                                                                fontWeight: '600',
+                                                                textTransform: 'uppercase',
+                                                                background: transaction.status === 'completed' ? '#dcfce7' : 
+                                                                           transaction.status === 'created' ? '#fef9c3' : '#fee2e2',
+                                                                color: transaction.status === 'completed' ? '#16a34a' : 
+                                                                       transaction.status === 'created' ? '#a16207' : '#dc2626'
+                                                            }}>
+                                                                {transaction.status || 'unknown'}
+                                                            </span>
+                                                        </div>
+                                                        <p style={{
+                                                            fontSize: '14px',
+                                                            color: '#64748b',
+                                                            margin: '4px 0 0 0'
+                                                        }}>
+                                                            {formattedDate}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style={{
+                                                textAlign: 'right',
+                                                minWidth: '120px'
+                                            }}>
+                                                <p style={{
+                                                    fontSize: '18px',
+                                                    fontWeight: '700',
+                                                    color: '#16a34a',
+                                                    margin: '0 0 4px 0'
+                                                }}>
+                                                    ${transaction.amount.toFixed(2)} {transaction.currency}
+                                                </p>
+                                                <p style={{
+                                                    fontSize: '14px',
+                                                    color: '#2563eb',
+                                                    fontWeight: '600',
+                                                    margin: 0
+                                                }}>
+                                                    +{transaction.num_credits} credit{transaction.num_credits !== 1 ? 's' : ''}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </SectionCard>
+
                 </div>
             </div>
+
+            {/* Buy Credits Modal */}
+            {showBuyCreditsModal && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 50,
+                    padding: '20px'
+                }}
+                onClick={() => {
+                    if (!paymentLoading) {
+                        setShowBuyCreditsModal(false);
+                        setNumCreditsToBuy(1);
+                    }
+                }}
+                >
+                    <div style={{
+                        background: '#ffffff',
+                        padding: '24px',
+                        borderRadius: '12px',
+                        maxWidth: '400px',
+                        width: '100%',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    >
+                        <h2 style={{
+                            fontSize: '20px',
+                            fontWeight: '600',
+                            marginBottom: '16px',
+                            color: '#0f172a'
+                        }}>
+                            Buy Credits
+                        </h2>
+                        <p style={{
+                            fontSize: '14px',
+                            color: '#64748b',
+                            marginBottom: '20px'
+                        }}>
+                            1 credit = $10 USD
+                        </p>
+                        
+                        <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#334155',
+                            marginBottom: '8px'
+                        }}>
+                            Number of Credits:
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            value={numCreditsToBuy}
+                            onChange={(e) => {
+                                const value = parseInt(e.target.value) || 1;
+                                setNumCreditsToBuy(Math.max(1, value));
+                            }}
+                            style={{
+                                width: '100%',
+                                padding: '10px 16px',
+                                borderRadius: '8px',
+                                border: '1px solid #cbd5e1',
+                                fontSize: '14px',
+                                marginBottom: '16px'
+                            }}
+                            disabled={paymentLoading}
+                        />
+                        
+                        <div style={{
+                            padding: '12px',
+                            background: '#f8fafc',
+                            borderRadius: '8px',
+                            marginBottom: '20px'
+                        }}>
+                            <p style={{
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: '#0f172a',
+                                margin: 0
+                            }}>
+                                Total: ${numCreditsToBuy * 10} USD
+                            </p>
+                        </div>
+                        
+                        <div style={{
+                            display: 'flex',
+                            gap: '12px'
+                        }}>
+                            <button
+                                onClick={handleBuyCredits}
+                                disabled={paymentLoading}
+                                style={{
+                                    flex: 1,
+                                    padding: '10px 20px',
+                                    background: paymentLoading ? '#94a3b8' : '#2563eb',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: '500',
+                                    cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                                    transition: 'background 0.15s ease',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                {paymentLoading ? 'Processing...' : 'Proceed to Payment'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowBuyCreditsModal(false);
+                                    setNumCreditsToBuy(1);
+                                }}
+                                disabled={paymentLoading}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: '#f1f5f9',
+                                    color: '#334155',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: '500',
+                                    cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                                    transition: 'background 0.15s ease',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

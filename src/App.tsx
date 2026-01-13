@@ -12,6 +12,7 @@ import { InterviewFeedback } from "./components/InterviewFeedback";
 import { OfferResponse } from "./components/OfferResponse";
 import { ReviewForm } from "./components/ReviewForm";
 import { InviteAccept } from "./components/InviteAccept";
+import { PaymentSuccess } from "./components/PaymentSuccess";
 
 export default function App() {
   return (
@@ -32,6 +33,8 @@ export default function App() {
         <Route path="/offer-response" element={<OfferResponse />} />
         <Route path="/review-form" element={<ReviewForm />} />
         <Route path="/invite-accept/:token" element={<InviteAccept />} />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<Navigate to="/organization-profile" replace />} />
       </Routes>
     </Router>
   );
