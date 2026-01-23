@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Briefcase, Users, CheckCircle, X, Clock, UserCheck, LogOut,
     ChevronDown, Mail, FileText, Download, Calendar
@@ -53,6 +53,7 @@ export function ManageJobs() {
     const [selectedRound, setSelectedRound] = useState<string>('');
     const [selectedTeam, setSelectedTeam] = useState<string>('');
     const [selectedLocationType, setSelectedLocationType] = useState<string>('');
+    const [isAIInterview, setIsAIInterview] = useState<boolean>(false);
     
     // Offer form state
     const [showOfferForm, setShowOfferForm] = useState<string | null>(null);
@@ -68,6 +69,16 @@ export function ManageJobs() {
     const [reviewEmail, setReviewEmail] = useState('');
     const [sendingReview, setSendingReview] = useState(false);
     const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+
+    // AI Interview transcript state
+    const [showTranscriptModal, setShowTranscriptModal] = useState(false);
+    const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
+    
+    // Make setters globally accessible to bypass closure issues
+    (window as any).openTranscriptModal = (data: any) => {
+        setSelectedTranscript(data);
+        setShowTranscriptModal(true);
+    };
 
     // Round options for interview scheduling
     const roundOptions = [
@@ -120,6 +131,46 @@ export function ManageJobs() {
             setMessage({ type: 'error', text: 'Failed to send review request' });
         } finally {
             setSendingReview(false);
+        }
+    };
+
+    const loadTranscript = async (feedbackId: string) => {
+        try {
+            console.log('Fetching transcript for feedback_id:', feedbackId);
+            
+            // Get auth token
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('Please log in again');
+                navigate('/company-login');
+                return;
+            }
+            
+            const res = await fetch(
+                `${API_BASE_URL}/api/interview-feedback/${feedbackId}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+            
+            if (res && res.ok) {
+                const data = await res.json();
+                console.log('Transcript data received:', data);
+                console.log('Transcript array:', data.transcript);
+                console.log('Transcript length:', data.transcript?.length);
+                setSelectedTranscript(data);
+                setShowTranscriptModal(true);
+            } else {
+                console.error('Failed to fetch transcript, status:', res?.status);
+                alert('Failed to load transcript');
+            }
+        } catch (err) {
+            console.error('Failed to load transcript:', err);
+            alert('Failed to load transcript: ' + (err as Error).message);
         }
     };
 
@@ -390,7 +441,8 @@ export function ManageJobs() {
             return;
         }
         
-        if (!selectedLocationType) {
+        // Validation: skip location type check for AI interviews
+        if (!isAIInterview && !selectedLocationType) {
             setMessage({ type: 'error', text: 'Please select interview location type (Online or Offline)' });
             return;
         }
@@ -403,7 +455,8 @@ export function ManageJobs() {
             orgName: userData?.name,
             orgEmail: userData?.email,
             job_id: selectedJobId,
-            location_type: selectedLocationType
+            location_type: isAIInterview ? 'ai_online' : selectedLocationType,
+            is_ai_interview: isAIInterview
         };
         
         console.log('Schedule Interview Details:', scheduleData);
@@ -430,6 +483,7 @@ export function ManageJobs() {
                 setSelectedRound('');
                 setSelectedTeam('');
                 setSelectedLocationType('');
+                setIsAIInterview(false);
                 
                 // Refresh applicants to update status and move to invitation_sent tab
                 if (selectedJobId) {
@@ -1920,6 +1974,8 @@ export function ManageJobs() {
                                                         setShowScheduleForm(null);
                                                         setSelectedRound('');
                                                         setSelectedTeam('');
+                                                        setSelectedLocationType('');
+                                                        setIsAIInterview(false);
                                                     }}
                                                     selectedRound={selectedRound}
                                                     selectedTeam={selectedTeam}
@@ -3706,6 +3762,8 @@ export function ManageJobs() {
                         setShowScheduleForm(null);
                         setSelectedRound('');
                         setSelectedTeam('');
+                        setSelectedLocationType('');
+                        setIsAIInterview(false);
                     }
                 }}>
                     <div style={{
@@ -3754,6 +3812,8 @@ export function ManageJobs() {
                                     setShowScheduleForm(null);
                                     setSelectedRound('');
                                     setSelectedTeam('');
+                                    setSelectedLocationType('');
+                                    setIsAIInterview(false);
                                 }}
                                 style={{
                                     background: 'rgba(255, 255, 255, 0.2)',
@@ -3845,7 +3905,61 @@ export function ManageJobs() {
                                     </div>
                                 </div>
 
-                                {/* Select Team */}
+                                {/* AI Interview Checkbox - Only show for Initial Screening Round */}
+                                {selectedRound === 'Initial Screening Round' && (
+                                    <div style={{
+                                        padding: '16px',
+                                        background: 'linear-gradient(to right, #d1fae5, #a7f3d0)',
+                                        border: '2px solid #10b981',
+                                        borderRadius: '12px',
+                                        marginTop: '-6px'
+                                    }}>
+                                        <label style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            fontWeight: '600',
+                                            color: '#065f46'
+                                        }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isAIInterview}
+                                                onChange={(e) => {
+                                                    setIsAIInterview(e.target.checked);
+                                                    if (e.target.checked) {
+                                                        // Reset team and location when AI interview is selected
+                                                        setSelectedTeam('');
+                                                        setSelectedLocationType('');
+                                                    }
+                                                }}
+                                                style={{
+                                                    width: '20px',
+                                                    height: '20px',
+                                                    cursor: 'pointer',
+                                                    accentColor: '#10b981'
+                                                }}
+                                            />
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                🤖 Conduct interview with AI
+                                            </span>
+                                        </label>
+                                        {isAIInterview && (
+                                            <p style={{
+                                                margin: '8px 0 0 32px',
+                                                fontSize: '12px',
+                                                color: '#047857',
+                                                lineHeight: '1.5'
+                                            }}>
+                                                The candidate will be interviewed by our AI system. Team and location are not required for AI interviews.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Select Team - Hide if AI interview */}
+                                {!isAIInterview && (
                                 <div>
                                     <label style={{
                                         fontSize: '14px',
@@ -3907,8 +4021,10 @@ export function ManageJobs() {
                                         }} />
                                     </div>
                                 </div>
+                                )}
 
-                                {/* Interview Location */}
+                                {/* Interview Location - Hide if AI interview */}
+                                {!isAIInterview && (
                                 <div>
                                     <label style={{
                                         fontSize: '14px',
@@ -3990,6 +4106,7 @@ export function ManageJobs() {
                                         </div>
                                     )}
                                 </div>
+                                )}
 
                                 {/* Action Buttons */}
                                 <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
@@ -3998,6 +4115,8 @@ export function ManageJobs() {
                                             setShowScheduleForm(null);
                                             setSelectedRound('');
                                             setSelectedTeam('');
+                                            setSelectedLocationType('');
+                                            setIsAIInterview(false);
                                         }}
                                         style={{
                                             flex: '1',
@@ -4024,33 +4143,35 @@ export function ManageJobs() {
                                     </button>
                                     <button
                                         onClick={() => handleScheduleSubmit(showScheduleForm)}
-                                        disabled={!selectedRound || !selectedTeam || !selectedLocationType}
+                                        disabled={!selectedRound || (!isAIInterview && (!selectedTeam || !selectedLocationType))}
                                         style={{
                                             flex: '1',
                                             padding: '14px 18px',
                                             fontSize: '14px',
                                             fontWeight: '700',
                                             color: '#ffffff',
-                                            background: (!selectedRound || !selectedTeam || !selectedLocationType) 
+                                            background: (!selectedRound || (!isAIInterview && (!selectedTeam || !selectedLocationType))) 
                                                 ? '#cbd5e1' 
                                                 : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                             border: 'none',
                                             borderRadius: '12px',
-                                            cursor: (!selectedRound || !selectedTeam || !selectedLocationType) ? 'not-allowed' : 'pointer',
+                                            cursor: (!selectedRound || (!isAIInterview && (!selectedTeam || !selectedLocationType))) ? 'not-allowed' : 'pointer',
                                             transition: 'all 0.2s ease',
-                                            boxShadow: (!selectedRound || !selectedTeam || !selectedLocationType) 
+                                            boxShadow: (!selectedRound || (!isAIInterview && (!selectedTeam || !selectedLocationType))) 
                                                 ? 'none' 
                                                 : '0 6px 20px rgba(102, 126, 234, 0.4)',
                                             letterSpacing: '0.3px'
                                         }}
                                         onMouseEnter={(e) => {
-                                            if (selectedRound && selectedTeam && selectedLocationType) {
+                                            const isValid = selectedRound && (isAIInterview || (selectedTeam && selectedLocationType));
+                                            if (isValid) {
                                                 e.currentTarget.style.transform = 'translateY(-2px)';
                                                 e.currentTarget.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.5)';
                                             }
                                         }}
                                         onMouseLeave={(e) => {
-                                            if (selectedRound && selectedTeam && selectedLocationType) {
+                                            const isValid = selectedRound && (isAIInterview || (selectedTeam && selectedLocationType));
+                                            if (isValid) {
                                                 e.currentTarget.style.transform = 'translateY(0)';
                                                 e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
                                             }
@@ -4157,6 +4278,174 @@ export function ManageJobs() {
                         >
                             {sendingReview ? 'Sending review request...' : 'Send review request'}
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Interview Transcript Modal */}
+            {showTranscriptModal && selectedTranscript && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(15, 23, 42, 0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 60,
+                    padding: '20px'
+                }}
+                onClick={() => setShowTranscriptModal(false)}>
+                    <div style={{
+                        background: '#ffffff',
+                        borderRadius: '16px',
+                        width: 'min(800px, 95vw)',
+                        maxHeight: '90vh',
+                        overflow: 'hidden',
+                        boxShadow: '0 25px 70px rgba(0, 0, 0, 0.4)',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}
+                    onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            padding: '20px 24px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>
+                                    🤖 AI Interview Transcript
+                                </h3>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)' }}>
+                                    {selectedTranscript.applicant_name} • {selectedTranscript.round}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowTranscriptModal(false)}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.2)',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '8px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <X style={{ width: '20px', height: '20px', color: '#ffffff' }} />
+                            </button>
+                        </div>
+
+                        {/* Transcript Content */}
+                        <div style={{
+                            flex: 1,
+                            overflowY: 'auto',
+                            padding: '24px'
+                        }}>
+                            {selectedTranscript.transcript && selectedTranscript.transcript.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {selectedTranscript.transcript.map((msg: any, idx: number) => (
+                                        <div key={idx} style={{
+                                            display: 'flex',
+                                            gap: '12px',
+                                            alignItems: 'flex-start',
+                                            padding: '14px',
+                                            background: msg.role === 'assistant' 
+                                                ? 'linear-gradient(to right, #f0f7ff, #e0f2fe)' 
+                                                : 'linear-gradient(to right, #f9fafb, #f3f4f6)',
+                                            borderRadius: '12px',
+                                            borderLeft: `4px solid ${msg.role === 'assistant' ? '#667eea' : '#10b981'}`
+                                        }}>
+                                            <div style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                borderRadius: '10px',
+                                                background: msg.role === 'assistant' ? '#667eea' : '#10b981',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '18px',
+                                                flexShrink: 0
+                                            }}>
+                                                {msg.role === 'assistant' ? '🤖' : '👤'}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{
+                                                    fontSize: '12px',
+                                                    color: '#6b7280',
+                                                    marginBottom: '6px',
+                                                    fontWeight: '600'
+                                                }}>
+                                                    {msg.role === 'assistant' ? 'AI Interviewer' : 'Candidate'} • {new Date(msg.timestamp).toLocaleTimeString()}
+                                                </div>
+                                                <div style={{
+                                                    fontSize: '14px',
+                                                    color: '#1e293b',
+                                                    lineHeight: '1.6',
+                                                    wordWrap: 'break-word'
+                                                }}>
+                                                    {msg.text}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div style={{
+                                    textAlign: 'center',
+                                    padding: '40px',
+                                    color: '#94a3b8'
+                                }}>
+                                    No transcript available
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{
+                            padding: '16px 24px',
+                            borderTop: '1px solid #e2e8f0',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: '#f8fafc'
+                        }}>
+                            <div style={{ fontSize: '12px', color: '#64748b' }}>
+                                Session: {selectedTranscript.session_id}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const text = selectedTranscript.transcript
+                                        .map((msg: any) => `[${new Date(msg.timestamp).toLocaleTimeString()}] ${msg.role === 'assistant' ? 'AI' : 'Candidate'}: ${msg.text}`)
+                                        .join('\n\n');
+                                    const blob = new Blob([text], { type: 'text/plain' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `transcript_${selectedTranscript.session_id}.txt`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                }}
+                                style={{
+                                    padding: '10px 16px',
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}
+                            >
+                                📥 Download Transcript
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -4701,24 +4990,126 @@ const ApplicantCard = ({
                                 fontSize: '12px',
                                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                             }}>
-                                <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 6px 0' }}>
-                                    <span style={{ color: '#64748b' }}>Round:</span> {round.round}
-                                </p>
-                                <p style={{ color: '#475569', margin: '4px 0' }}>
-                                    <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
-                                </p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <p style={{ fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                                        <span style={{ color: '#64748b' }}>Round:</span> {round.round}
+                                    </p>
+                                    {round.type === 'ai_interview' && (
+                                        <span style={{
+                                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                            color: 'white',
+                                            padding: '4px 8px',
+                                            borderRadius: '6px',
+                                            fontSize: '10px',
+                                            fontWeight: '700',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}>
+                                            🤖 AI Interview
+                                        </span>
+                                    )}
+                                </div>
+                                {!round.type || round.type !== 'ai_interview' ? (
+                                    <p style={{ color: '#475569', margin: '4px 0' }}>
+                                        <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
+                                    </p>
+                                ) : (
+                                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <button
+                                            onClick={async () => {
+                                                const feedbackId = round.feedback_id;
+                                                try {
+                                                    console.log('Fetching transcript for feedback_id:', feedbackId);
+                                                    const token = localStorage.getItem('access_token');
+                                                    if (!token) {
+                                                        alert('Please log in again');
+                                                        window.location.href = '/company-login';
+                                                        return;
+                                                    }
+                                                    const res = await fetch(
+                                                        `${API_BASE_URL}/api/interview-feedback/${feedbackId}`,
+                                                        {
+                                                            method: 'GET',
+                                                            headers: {
+                                                                'Authorization': `Bearer ${token}`,
+                                                                'Content-Type': 'application/json'
+                                                            }
+                                                        }
+                                                    );
+                                                    if (res && res.ok) {
+                                                        const data = await res.json();
+                                                        console.log('Transcript data:', data);
+                                                        console.log('Transcript array:', data.transcript);
+                                                        // Use window object to bypass all React closure issues
+                                                        (window as any).openTranscriptModal(data);
+                                                    } else {
+                                                        alert('Failed to load transcript. Status: ' + res.status);
+                                                    }
+                                                } catch (err) {
+                                                    console.error('Error loading transcript:', err);
+                                                    alert('Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '8px 12px',
+                                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                fontSize: '11px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px'
+                                            }}
+                                        >
+                                            📝 View Transcript
+                                        </button>
+                                        {round.recording_path && (
+                                            <a
+                                                href={`${API_BASE_URL}${round.recording_path}`}
+                                                download
+                                                style={{
+                                                    padding: '8px 12px',
+                                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    fontSize: '11px',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px',
+                                                    textDecoration: 'none'
+                                                }}
+                                            >
+                                                🎥 Download Recording
+                                            </a>
+                                        )}
+                                    </div>
+                                )}
                                 <p style={{ color: '#475569', margin: '4px 0' }}>
                                     <span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}
                                 </p>
                                 <p style={{ color: '#475569', margin: '4px 0' }}>
                                     <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
                                 </p>
-                                <p style={{ color: '#475569', margin: '4px 0' }}>
-                                    <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
-                                </p>
-                                <p style={{ color: '#475569', margin: '4px 0' }}>
-                                    <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
-                                </p>
+                                {/* Only show Attended and Outcome for non-AI interviews */}
+                                {(!round.type || round.type !== 'ai_interview') && (
+                                    <>
+                                        <p style={{ color: '#475569', margin: '4px 0' }}>
+                                            <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
+                                        </p>
+                                        <p style={{ color: '#475569', margin: '4px 0' }}>
+                                            <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
+                                        </p>
+                                    </>
+                                )}
                                 {round.scores && (
                                     <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
                                         <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>📊 Scores:</p>

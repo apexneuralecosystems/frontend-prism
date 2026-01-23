@@ -2206,7 +2206,7 @@ export function OrganizationProfile() {
                                 </svg>
                                 Refresh
                             </button>
-                        </div>
+                </div>
                         {paymentHistory.length === 0 ? (
                             <p style={{
                                 color: '#94a3b8',
@@ -2279,7 +2279,7 @@ export function OrganizationProfile() {
                                                                 borderRadius: '50%',
                                                                 background: '#ffffff'
                                                             }} />
-                                                        </div>
+            </div>
                                                     )}
                                                     <div>
                                                         <div style={{

@@ -13,6 +13,7 @@ import { OfferResponse } from "./components/OfferResponse";
 import { ReviewForm } from "./components/ReviewForm";
 import { InviteAccept } from "./components/InviteAccept";
 import { PaymentSuccess } from "./components/PaymentSuccess";
+import { AIInterview } from "./components/AIInterview";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/manage-jobs" element={<ManageJobs />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/schedule-interview" element={<ScheduleInterview />} />
+        <Route path="/ai-interview" element={<AIInterview />} />
         <Route path="/interview-feedback" element={<InterviewFeedback />} />
         <Route path="/offer-response" element={<OfferResponse />} />
         <Route path="/review-form" element={<ReviewForm />} />
