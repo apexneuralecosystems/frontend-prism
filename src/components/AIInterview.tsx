@@ -83,8 +83,6 @@ export function AIInterview() {
             // Request microphone and screen permissions
             await setupMedia();
 
-            // Construct WebSocket URL from API_BASE_URL instead of using backend's ws_url
-            // Convert http/https to ws/wss
             const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
             const wsBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
             const wsUrl = `${wsProtocol}://${wsBaseUrl}/ws/ai-interview/${data.session_id}`;
@@ -232,10 +230,12 @@ export function AIInterview() {
                     reject(error);
                 };
 
-                ws.onclose = () => {
-                    console.log('🔌 WebSocket closed');
+                ws.onclose = (event) => {
+                    console.log('🔌 WebSocket closed', { code: event.code, reason: event.reason, wasClean: event.wasClean });
                     if (status !== 'ending' && status !== 'complete') {
-                        setError('Connection closed unexpectedly');
+                        const errorMsg = event.reason || 'Connection closed unexpectedly';
+                        console.error('WebSocket closed with error:', errorMsg);
+                        setError(errorMsg);
                         setStatus('error');
                     }
                 };
@@ -285,10 +285,18 @@ export function AIInterview() {
             };
 
             // Send start event
-            ws.send(JSON.stringify({
-                event: 'start',
-                streamSid: sessionId
-            }));
+                        // Send start event - check WebSocket state first
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    event: 'start',
+                    streamSid: sessionId
+                }));
+                console.log('✅ Start event sent to server');
+            } else {
+                console.error('❌ Cannot send start event - WebSocket is not open. State:', ws.readyState);
+                setError('WebSocket connection lost. Please refresh and try again.');
+                setStatus('error');
+            }
 
         } catch (err) {
             console.error('Error starting audio capture:', err);
