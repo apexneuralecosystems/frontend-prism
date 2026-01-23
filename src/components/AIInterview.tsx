@@ -83,8 +83,15 @@ export function AIInterview() {
             // Request microphone and screen permissions
             await setupMedia();
 
+            // Construct WebSocket URL from API_BASE_URL instead of using backend's ws_url
+            // Convert http/https to ws/wss
+            const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
+            const wsBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const wsUrl = `${wsProtocol}://${wsBaseUrl}/ws/ai-interview/${data.session_id}`;
+            
             // Connect to WebSocket
-            await connectWebSocket(data.ws_url, data.session_id);
+            await connectWebSocket(wsUrl, data.session_id);
+
 
         } catch (err: any) {
             console.error('Error initializing interview:', err);
