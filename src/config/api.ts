@@ -1,7 +1,5 @@
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5555' || 'https://prism.apexneural.cloud';  
-//const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prism.backend.apexneural.cloud';  for server
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prism.backend.apexneural.cloud';
 export const API_ENDPOINTS = {
   DEMO_REQUEST: `${API_BASE_URL}/api/demo-request`,
   HEALTH: `${API_BASE_URL}/health`,
