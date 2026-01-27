@@ -875,8 +875,8 @@ export function AIInterview() {
                         </div>
                     )}
 
-                    {/* Interview Status - compact */}
-                    <div style={{
+                    {/* Interview Status - compact (commented out for now) */}
+                    {/* <div style={{
                         flexShrink: 0,
                         background: 'white',
                         borderRadius: '16px',
@@ -939,7 +939,7 @@ export function AIInterview() {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Interview Tips - scrollable */}
                     <div style={{
