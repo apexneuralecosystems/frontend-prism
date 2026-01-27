@@ -673,7 +673,7 @@ export function AIInterview() {
                         <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
                             {status === 'initializing' && 'Initializing...'}
                             {status === 'connecting' && 'Connecting...'}
-                            {status === 'active' && (isRecording ? 'In Progress • 🔴 Recording' : 'In Progress')}
+                            {status === 'active' && isRecording && '🔴 Recording'}
                             {status === 'ending' && 'Ending interview...'}
                         </p>
                     </div>
@@ -875,7 +875,73 @@ export function AIInterview() {
                         </div>
                     )}
 
-                    {/* Interview Tips - takes remaining space so it's always visible */}
+                    {/* Interview Status - compact */}
+                    <div style={{
+                        flexShrink: 0,
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '12px 16px',
+                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+                    }}>
+                        <h4 style={{
+                            margin: '0 0 8px 0',
+                            fontSize: '13px',
+                            fontWeight: '700',
+                            color: '#1e293b'
+                        }}>
+                            Interview Status
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 10px',
+                                background: status === 'active' ? '#d1fae5' : '#e0f2fe',
+                                borderRadius: '8px'
+                            }}>
+                                <div style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    background: status === 'active' ? '#10b981' : '#3b82f6'
+                                }} />
+                                <span style={{
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: status === 'active' ? '#065f46' : '#1e40af'
+                                }}>
+                                    {status === 'initializing' && 'Initializing'}
+                                    {status === 'connecting' && 'Connecting'}
+                                    {status === 'active' && 'In Progress'}
+                                    {status === 'ending' && 'Ending'}
+                                </span>
+                            </div>
+                            {isRecording && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 10px',
+                                    background: '#fee2e2',
+                                    borderRadius: '8px'
+                                }}>
+                                    <div style={{
+                                        width: '6px',
+                                        height: '6px',
+                                        borderRadius: '50%',
+                                        background: '#dc2626',
+                                        animation: 'pulse 2s infinite'
+                                    }} />
+                                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#991b1b' }}>
+                                        Recording
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Interview Tips - scrollable */}
                     <div style={{
                         flex: 1,
                         minHeight: 0,
@@ -888,7 +954,7 @@ export function AIInterview() {
                         overflow: 'hidden'
                     }}>
                         <h4 style={{
-                            margin: '0 0 16px 0',
+                            margin: '0 0 12px 0',
                             flexShrink: 0,
                             fontSize: '16px',
                             fontWeight: '700',
@@ -896,19 +962,25 @@ export function AIInterview() {
                         }}>
                             💡 Interview Tips
                         </h4>
-                        <ul style={{
-                            margin: 0,
-                            padding: '0 0 0 20px',
-                            fontSize: '14px',
-                            color: '#6b7280',
-                            lineHeight: '1.8'
+                        <div style={{
+                            flex: 1,
+                            minHeight: 0,
+                            overflowY: 'auto'
                         }}>
-                            <li>Speak clearly and at a normal pace</li>
-                            <li>Wait for the AI to finish before responding</li>
-                            <li>Be concise but thorough in your answers</li>
-                            <li>Stay in a quiet environment</li>
-                            <li>Answer honestly based on your experience</li>
-                        </ul>
+                            <ul style={{
+                                margin: 0,
+                                padding: '0 0 0 20px',
+                                fontSize: '14px',
+                                color: '#6b7280',
+                                lineHeight: '1.8'
+                            }}>
+                                <li>Speak clearly and at a normal pace</li>
+                                <li>Wait for the AI to finish before responding</li>
+                                <li>Be concise but thorough in your answers</li>
+                                <li>Stay in a quiet environment</li>
+                                <li>Answer honestly based on your experience</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
