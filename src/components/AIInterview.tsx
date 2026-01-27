@@ -20,9 +20,12 @@ export function AIInterview() {
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [interviewStarted, setInterviewStarted] = useState(false);
+    const [cameraReady, setCameraReady] = useState(false);
 
     // Refs for WebSocket and media
     const wsRef = useRef<WebSocket | null>(null);
+    const cameraStreamRef = useRef<MediaStream | null>(null);
+    const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
@@ -52,6 +55,16 @@ export function AIInterview() {
         // Auto-scroll transcript to bottom
         transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [transcript]);
+
+    useEffect(() => {
+        const video = cameraVideoRef.current;
+        const stream = cameraStreamRef.current;
+        if (!video || !stream) return;
+        video.srcObject = stream;
+        return () => {
+            video.srcObject = null;
+        };
+    }, [cameraReady, status]);
 
     const initializeInterview = async () => {
         try {
@@ -83,13 +96,8 @@ export function AIInterview() {
             // Request microphone and screen permissions
             await setupMedia();
 
-            const wsProtocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
-            const wsBaseUrl = API_BASE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
-            const wsUrl = `${wsProtocol}://${wsBaseUrl}/ws/ai-interview/${data.session_id}`;
-            
             // Connect to WebSocket
-            await connectWebSocket(wsUrl, data.session_id);
-
+            await connectWebSocket(data.ws_url, data.session_id);
 
         } catch (err: any) {
             console.error('Error initializing interview:', err);
@@ -145,6 +153,12 @@ export function AIInterview() {
             const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             console.log('✅ Microphone access granted');
 
+            // STEP 3: Request camera for live self-view
+            const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraStreamRef.current = cameraStream;
+            setCameraReady(true);
+            console.log('✅ Camera access granted');
+
             // Create audio context (24000 Hz for pcm16 like reference browser mode)
             const audioContext = new AudioContext({ sampleRate: 24000 });
             audioContextRef.current = audioContext;
@@ -177,8 +191,13 @@ export function AIInterview() {
 
             console.log('✅ Media setup complete');
         } catch (err: any) {
+            if (cameraStreamRef.current) {
+                cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+                cameraStreamRef.current = null;
+                setCameraReady(false);
+            }
             console.error('Media setup error:', err);
-            throw new Error(err.message || 'Please grant screen sharing and microphone permissions to continue');
+            throw new Error(err.message || 'Please grant screen sharing, microphone, and camera permissions to continue');
         }
     };
 
@@ -230,12 +249,10 @@ export function AIInterview() {
                     reject(error);
                 };
 
-                ws.onclose = (event) => {
-                    console.log('🔌 WebSocket closed', { code: event.code, reason: event.reason, wasClean: event.wasClean });
+                ws.onclose = () => {
+                    console.log('🔌 WebSocket closed');
                     if (status !== 'ending' && status !== 'complete') {
-                        const errorMsg = event.reason || 'Connection closed unexpectedly';
-                        console.error('WebSocket closed with error:', errorMsg);
-                        setError(errorMsg);
+                        setError('Connection closed unexpectedly');
                         setStatus('error');
                     }
                 };
@@ -285,18 +302,10 @@ export function AIInterview() {
             };
 
             // Send start event
-                        // Send start event - check WebSocket state first
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({
-                    event: 'start',
-                    streamSid: sessionId
-                }));
-                console.log('✅ Start event sent to server');
-            } else {
-                console.error('❌ Cannot send start event - WebSocket is not open. State:', ws.readyState);
-                setError('WebSocket connection lost. Please refresh and try again.');
-                setStatus('error');
-            }
+            ws.send(JSON.stringify({
+                event: 'start',
+                streamSid: sessionId
+            }));
 
         } catch (err) {
             console.error('Error starting audio capture:', err);
@@ -442,8 +451,10 @@ export function AIInterview() {
     const endInterview = async () => {
         try {
             setStatus('ending');
-
-            // Stop recording
+            if (cameraStreamRef.current) {
+                cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+                cameraStreamRef.current = null;
+            }
             if (mediaRecorderRef.current && isRecording) {
                 mediaRecorderRef.current.stop();
                 setIsRecording(false);
@@ -514,17 +525,16 @@ export function AIInterview() {
     };
 
     const cleanup = () => {
-        // Close WebSocket
+        if (cameraStreamRef.current) {
+            cameraStreamRef.current.getTracks().forEach((t) => t.stop());
+            cameraStreamRef.current = null;
+        }
         if (wsRef.current) {
             wsRef.current.close();
         }
-
-        // Stop recording
         if (mediaRecorderRef.current && isRecording) {
             mediaRecorderRef.current.stop();
         }
-
-        // Close audio context
         if (audioContextRef.current) {
             audioContextRef.current.close();
         }
@@ -790,6 +800,46 @@ export function AIInterview() {
                     flexDirection: 'column',
                     gap: '24px'
                 }}>
+                    {/* Live camera self-view */}
+                    {(status === 'connecting' || status === 'active') && cameraReady && cameraStreamRef.current && (
+                        <div style={{
+                            background: 'white',
+                            borderRadius: '20px',
+                            padding: '16px',
+                            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+                            overflow: 'hidden'
+                        }}>
+                            <h4 style={{
+                                margin: '0 0 12px 0',
+                                fontSize: '14px',
+                                fontWeight: '700',
+                                color: '#1e293b'
+                            }}>
+                                📹 You
+                            </h4>
+                            <div style={{
+                                position: 'relative',
+                                borderRadius: '12px',
+                                overflow: 'hidden',
+                                background: '#111',
+                                aspectRatio: '4/3',
+                                maxWidth: '100%'
+                            }}>
+                                <video
+                                    ref={cameraVideoRef}
+                                    autoPlay
+                                    muted
+                                    playsInline
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        transform: 'scaleX(-1)'
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
                     {/* Status Card */}
                     <div style={{
                         background: 'white',
