@@ -673,7 +673,7 @@ export function AIInterview() {
                         <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.8)', fontSize: '14px' }}>
                             {status === 'initializing' && 'Initializing...'}
                             {status === 'connecting' && 'Connecting...'}
-                            {status === 'active' && isRecording && '🔴 Recording'}
+                            {status === 'active' && (isRecording ? 'In Progress • 🔴 Recording' : 'In Progress')}
                             {status === 'ending' && 'Ending interview...'}
                         </p>
                     </div>
@@ -874,90 +874,22 @@ export function AIInterview() {
                             </div>
                         </div>
                     )}
-                    {/* Status Card - fixed */}
-                    <div style={{
-                        flexShrink: 0,
-                        background: 'white',
-                        borderRadius: '20px',
-                        padding: '24px',
-                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
-                    }}>
-                        <h4 style={{
-                            margin: '0 0 16px 0',
-                            fontSize: '16px',
-                            fontWeight: '700',
-                            color: '#1e293b'
-                        }}>
-                            Interview Status
-                        </h4>
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px'
-                        }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '12px',
-                                background: status === 'active' ? '#d1fae5' : '#e0f2fe',
-                                borderRadius: '10px'
-                            }}>
-                                <div style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '50%',
-                                    background: status === 'active' ? '#10b981' : '#3b82f6'
-                                }} />
-                                <span style={{
-                                    fontSize: '14px',
-                                    fontWeight: '600',
-                                    color: status === 'active' ? '#065f46' : '#1e40af'
-                                }}>
-                                    {status === 'initializing' && 'Initializing'}
-                                    {status === 'connecting' && 'Connecting'}
-                                    {status === 'active' && 'In Progress'}
-                                    {status === 'ending' && 'Ending'}
-                                </span>
-                            </div>
-                            {isRecording && (
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '12px',
-                                    background: '#fee2e2',
-                                    borderRadius: '10px'
-                                }}>
-                                    <div style={{
-                                        width: '8px',
-                                        height: '8px',
-                                        borderRadius: '50%',
-                                        background: '#dc2626',
-                                        animation: 'pulse 2s infinite'
-                                    }} />
-                                    <span style={{
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        color: '#991b1b'
-                                    }}>
-                                        Recording
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
 
-                    {/* Tips Card - fixed */}
+                    {/* Interview Tips - takes remaining space so it's always visible */}
                     <div style={{
-                        flexShrink: 0,
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
                         background: 'white',
                         borderRadius: '20px',
                         padding: '24px',
-                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+                        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+                        overflow: 'hidden'
                     }}>
                         <h4 style={{
                             margin: '0 0 16px 0',
+                            flexShrink: 0,
                             fontSize: '16px',
                             fontWeight: '700',
                             color: '#1e293b'
