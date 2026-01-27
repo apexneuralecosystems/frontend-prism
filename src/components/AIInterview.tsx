@@ -21,6 +21,7 @@ export function AIInterview() {
     const [isRecording, setIsRecording] = useState(false);
     const [interviewStarted, setInterviewStarted] = useState(false);
     const [cameraReady, setCameraReady] = useState(false);
+    const [screenShareStopped, setScreenShareStopped] = useState(false);
 
     // Refs for WebSocket and media
     const wsRef = useRef<WebSocket | null>(null);
@@ -143,6 +144,9 @@ export function AIInterview() {
                     throw new Error('REQUIRED: You must share your screen WITH AUDIO.\n\nPlease check the "Share audio" or "Share tab audio" option when sharing your screen.');
                 }
 
+                if (videoTrack) {
+                    videoTrack.onended = () => setScreenShareStopped(true);
+                }
                 console.log('✅ Screen sharing enabled (entire screen with audio)');
             } catch (screenErr: any) {
                 console.error('Screen sharing error:', screenErr);
@@ -698,17 +702,34 @@ export function AIInterview() {
                 )}
             </div>
 
+            {screenShareStopped && (status === 'connecting' || status === 'active') && (
+                <div style={{
+                    background: '#fef3c7',
+                    borderBottom: '2px solid #f59e0b',
+                    padding: '12px 32px',
+                    textAlign: 'center',
+                    fontSize: '15px',
+                    fontWeight: '600',
+                    color: '#92400e'
+                }}>
+                    ⚠️ You stopped screen sharing. Please keep sharing until you end the interview.
+                </div>
+            )}
+
             {/* Main Content */}
             <div style={{
                 flex: 1,
+                minHeight: 0,
                 display: 'flex',
                 padding: '32px',
                 gap: '32px',
                 overflow: 'hidden'
             }}>
-                {/* Transcript Panel */}
+                {/* Transcript Panel - only scrollable area */}
                 <div style={{
                     flex: 1,
+                    minWidth: 0,
+                    minHeight: 0,
                     background: 'white',
                     borderRadius: '20px',
                     padding: '24px',
@@ -719,6 +740,7 @@ export function AIInterview() {
                 }}>
                     <h3 style={{
                         margin: '0 0 20px 0',
+                        flexShrink: 0,
                         fontSize: '20px',
                         fontWeight: '700',
                         color: '#1e293b',
@@ -729,6 +751,7 @@ export function AIInterview() {
                     </h3>
                     <div style={{
                         flex: 1,
+                        minHeight: 0,
                         overflowY: 'auto',
                         display: 'flex',
                         flexDirection: 'column',
@@ -793,12 +816,14 @@ export function AIInterview() {
                     </div>
                 </div>
 
-                {/* Info Panel */}
+                {/* Info Panel - fixed; camera, status, tips */}
                 <div style={{
                     width: '320px',
+                    flexShrink: 0,
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '24px'
+                    gap: '24px',
+                    overflow: 'hidden'
                 }}>
                     {/* Live camera self-view */}
                     {(status === 'connecting' || status === 'active') && cameraReady && cameraStreamRef.current && (
