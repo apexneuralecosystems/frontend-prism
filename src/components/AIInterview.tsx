@@ -634,13 +634,17 @@ export function AIInterview() {
 
     return (
         <div style={{
+            height: '100vh',
             minHeight: '100vh',
+            maxHeight: '100vh',
+            overflow: 'hidden',
             background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
             display: 'flex',
             flexDirection: 'column'
         }}>
-            {/* Header */}
+            {/* Header - fixed */}
             <div style={{
+                flexShrink: 0,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 padding: '24px 32px',
                 display: 'flex',
@@ -704,6 +708,7 @@ export function AIInterview() {
 
             {screenShareStopped && (status === 'connecting' || status === 'active') && (
                 <div style={{
+                    flexShrink: 0,
                     background: '#fef3c7',
                     borderBottom: '2px solid #f59e0b',
                     padding: '12px 32px',
@@ -716,14 +721,15 @@ export function AIInterview() {
                 </div>
             )}
 
-            {/* Main Content */}
+            {/* Main Content - fills remaining space, no page scroll */}
             <div style={{
                 flex: 1,
                 minHeight: 0,
                 display: 'flex',
                 padding: '32px',
                 gap: '32px',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                alignSelf: 'stretch'
             }}>
                 {/* Transcript Panel - only scrollable area */}
                 <div style={{
