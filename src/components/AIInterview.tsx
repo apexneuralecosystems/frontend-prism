@@ -62,6 +62,7 @@ export function AIInterview() {
         const stream = cameraStreamRef.current;
         if (!video || !stream) return;
         video.srcObject = stream;
+        video.play().catch(() => {});
         return () => {
             video.srcObject = null;
         };
@@ -831,9 +832,10 @@ export function AIInterview() {
                     gap: '24px',
                     overflow: 'hidden'
                 }}>
-                    {/* Live camera self-view */}
+                    {/* Live camera self-view - flexShrink 0 so it never collapses */}
                     {(status === 'connecting' || status === 'active') && cameraReady && cameraStreamRef.current && (
                         <div style={{
+                            flexShrink: 0,
                             background: 'white',
                             borderRadius: '20px',
                             padding: '16px',
@@ -853,8 +855,9 @@ export function AIInterview() {
                                 borderRadius: '12px',
                                 overflow: 'hidden',
                                 background: '#111',
-                                aspectRatio: '4/3',
-                                maxWidth: '100%'
+                                width: '100%',
+                                height: '180px',
+                                minHeight: '180px'
                             }}>
                                 <video
                                     ref={cameraVideoRef}
@@ -871,8 +874,9 @@ export function AIInterview() {
                             </div>
                         </div>
                     )}
-                    {/* Status Card */}
+                    {/* Status Card - fixed */}
                     <div style={{
+                        flexShrink: 0,
                         background: 'white',
                         borderRadius: '20px',
                         padding: '24px',
@@ -944,8 +948,9 @@ export function AIInterview() {
                         </div>
                     </div>
 
-                    {/* Tips Card */}
+                    {/* Tips Card - fixed */}
                     <div style={{
+                        flexShrink: 0,
                         background: 'white',
                         borderRadius: '20px',
                         padding: '24px',
