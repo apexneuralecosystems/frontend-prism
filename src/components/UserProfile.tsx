@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Pencil, Plus, Trash2, X, Save,
     Upload, CheckCircle, MapPin, Mail, Phone,
-    Briefcase, GraduationCap, Award, Globe, Github, Linkedin, FileText, LogOut, User
+    Briefcase, GraduationCap, Award, Globe, Github, Linkedin, FileText, LogOut, User, Menu, UserCircle
 } from 'lucide-react';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
@@ -168,6 +168,9 @@ export function UserProfile() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [menuHovered, setMenuHovered] = useState(false);
+    const [editHovered, setEditHovered] = useState(false);
 
     useEffect(() => {
         // Clear data on mount to prevent showing stale data
@@ -412,6 +415,24 @@ export function UserProfile() {
         localStorage.removeItem("user");
         navigate("/auth");
     };
+
+    // Close sidebar when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (isSidebarOpen && !target.closest('[data-sidebar-container]') && !target.closest('[data-menu-button]')) {
+                setIsSidebarOpen(false);
+            }
+        };
+
+        if (isSidebarOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isSidebarOpen]);
 
     const handleChange = (field: keyof UserProfileData, value: any) => {
         setData(prev => ({ ...prev, [field]: value }));
@@ -1771,35 +1792,36 @@ export function UserProfile() {
         }}>
             {/* Header */}
             <div style={{
-                background: '#ffffff',
-                borderBottom: '1px solid #e5e7eb',
+                background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
+                borderBottom: '1px solid #e2e8f0',
                 position: 'sticky',
                 top: 0,
-                zIndex: 1000,
-                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)'
+                zIndex: 20,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
             }}>
                 <div style={{
-                    maxWidth: '1200px',
+                    maxWidth: '1152px',
                     margin: '0 auto',
-                    padding: '20px 28px',
+                    padding: '16px 24px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
                 }}>
-                    <div>
-                        <h1 style={{
-                            fontSize: '26px',
-                            fontWeight: '700',
-                            color: '#1f2937',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ 
+                            background: 'rgba(255, 255, 255, 0.2)', 
+                            borderRadius: '10px', 
+                            padding: '8px',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
-                            margin: 0
+                            justifyContent: 'center'
                         }}>
-                            <User style={{ width: '30px', height: '30px', color: '#667eea' }} />
-                            Candidate Profile
-                        </h1>
-                        <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Manage your professional information</p>
+                            <User style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                        </div>
+                        <div>
+                            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>Candidate Profile</h1>
+                            <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Manage your professional information</p>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {!isEditMode ? (
@@ -1809,21 +1831,30 @@ export function UserProfile() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    padding: '12px 24px',
-                                    borderRadius: '10px',
-                                    fontWeight: '600',
-                                    color: '#ffffff',
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    padding: '10px 20px',
+                                    borderRadius: '8px',
+                                    fontWeight: '500',
                                     fontSize: '14px',
+                                    color: '#ffffff',
+                                    background: editHovered ? '#1d4ed8' : '#2563eb',
                                     border: 'none',
                                     cursor: 'pointer',
-                                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-                                    transition: 'transform 0.2s'
+                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
+                                    transition: 'all 0.15s ease',
+                                    transform: 'translateY(0)'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                                onMouseEnter={(e) => {
+                                    setEditHovered(true);
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    setEditHovered(false);
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
+                                }}
                             >
-                                <Pencil style={{ width: '18px', height: '18px' }} />
+                                <Pencil style={{ width: '16px', height: '16px' }} />
                                 Edit Profile
                             </button>
                         ) : (
@@ -1834,28 +1865,37 @@ export function UserProfile() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    padding: '12px 24px',
-                                    borderRadius: '10px',
-                                    fontWeight: '600',
-                                    color: '#ffffff',
-                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    padding: '10px 20px',
+                                    borderRadius: '8px',
+                                    fontWeight: '500',
                                     fontSize: '14px',
+                                    color: '#ffffff',
+                                    background: loading ? '#16a34a' : (editHovered ? '#15803d' : '#16a34a'),
                                     border: 'none',
                                     cursor: loading ? 'not-allowed' : 'pointer',
-                                    opacity: loading ? 0.6 : 1,
-                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
-                                    transition: 'transform 0.2s'
+                                    opacity: loading ? 0.5 : 1,
+                                    boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)',
+                                    transition: 'all 0.15s ease',
+                                    transform: 'translateY(0)'
                                 }}
-                                onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-2px)')}
-                                onMouseLeave={(e) => !loading && (e.currentTarget.style.transform = 'translateY(0)')}
+                                onMouseEnter={(e) => {
+                                    if (!loading) {
+                                        setEditHovered(true);
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    setEditHovered(false);
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
                             >
                                 {loading ? (
                                     <>
                                         <div style={{
-                                            width: '18px',
-                                            height: '18px',
-                                            border: '3px solid white',
-                                            borderTop: '3px solid transparent',
+                                            width: '16px',
+                                            height: '16px',
+                                            border: '2px solid white',
+                                            borderTop: '2px solid transparent',
                                             borderRadius: '50%',
                                             animation: 'spin 1s linear infinite'
                                         }}></div>
@@ -1863,36 +1903,234 @@ export function UserProfile() {
                                     </>
                                 ) : (
                                     <>
-                                        <Save style={{ width: '18px', height: '18px' }} />
+                                        <Save style={{ width: '16px', height: '16px' }} />
                                         Save Changes
                                     </>
                                 )}
                             </button>
                         )}
                         <button
-                            onClick={handleLogout}
+                            data-menu-button
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px',
-                                padding: '12px 24px',
-                                borderRadius: '10px',
-                                fontWeight: '600',
+                                justifyContent: 'center',
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '8px',
+                                fontWeight: '500',
                                 color: '#ffffff',
-                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                fontSize: '14px',
-                                border: 'none',
+                                background: menuHovered ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)',
+                                border: '1px solid rgba(255, 255, 255, 0.3)',
                                 cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
-                                transition: 'transform 0.2s'
+                                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                                transition: 'all 0.15s ease'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                            onMouseEnter={() => setMenuHovered(true)}
+                            onMouseLeave={() => setMenuHovered(false)}
                         >
-                            <LogOut style={{ width: '18px', height: '18px' }} />
-                            Logout
+                            <Menu style={{ width: '20px', height: '20px' }} />
                         </button>
                     </div>
+                </div>
+            </div>
+
+            {/* Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div
+                    onClick={() => setIsSidebarOpen(false)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        zIndex: 999,
+                        animation: 'fadeIn 0.2s ease'
+                    }}
+                />
+            )}
+
+            {/* Left Sidebar */}
+            <div
+                data-sidebar-container
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    height: '100vh',
+                    width: '280px',
+                    background: '#ffffff',
+                    boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
+                    zIndex: 1000,
+                    transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                    transition: 'transform 0.3s ease',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflowY: 'auto'
+                }}
+            >
+                {/* Sidebar Header */}
+                <div style={{
+                    padding: '24px 20px',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+                }}>
+                    <div>
+                        <h2 style={{
+                            fontSize: '18px',
+                            fontWeight: '700',
+                            color: '#0f172a',
+                            margin: 0
+                        }}>
+                            Navigation
+                        </h2>
+                        <p style={{
+                            fontSize: '12px',
+                            color: '#64748b',
+                            margin: '4px 0 0 0'
+                        }}>
+                            Quick access menu
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setIsSidebarOpen(false)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: '#f1f5f9',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                    >
+                        <X style={{ width: '18px', height: '18px', color: '#64748b' }} />
+                    </button>
+                </div>
+
+                {/* Sidebar Navigation */}
+                <div style={{
+                    flex: 1,
+                    padding: '16px 0'
+                }}>
+                    <button
+                        onClick={() => {
+                            navigate('/user-profile');
+                            setIsSidebarOpen(false);
+                        }}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 20px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            color: '#1e293b',
+                            transition: 'all 0.15s ease',
+                            textAlign: 'left',
+                            borderLeft: '3px solid transparent'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f1f5f9';
+                            e.currentTarget.style.borderLeftColor = '#2563eb';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.borderLeftColor = 'transparent';
+                        }}
+                    >
+                        <UserCircle style={{ width: '20px', height: '20px', color: '#2563eb' }} />
+                        Profile
+                    </button>
+                    <button
+                        onClick={() => {
+                            navigate('/jobs');
+                            setIsSidebarOpen(false);
+                        }}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 20px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            color: '#1e293b',
+                            transition: 'all 0.15s ease',
+                            textAlign: 'left',
+                            borderLeft: '3px solid transparent'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f1f5f9';
+                            e.currentTarget.style.borderLeftColor = '#2563eb';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.borderLeftColor = 'transparent';
+                        }}
+                    >
+                        <Briefcase style={{ width: '20px', height: '20px', color: '#2563eb' }} />
+                        Jobs
+                    </button>
+                </div>
+
+                {/* Sidebar Footer with Logout */}
+                <div style={{
+                    padding: '16px 0',
+                    borderTop: '1px solid #e2e8f0',
+                    marginTop: 'auto'
+                }}>
+                    <button
+                        onClick={() => {
+                            handleLogout();
+                            setIsSidebarOpen(false);
+                        }}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '14px 20px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            color: '#dc2626',
+                            transition: 'all 0.15s ease',
+                            textAlign: 'left',
+                            borderLeft: '3px solid transparent'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#fef2f2';
+                            e.currentTarget.style.borderLeftColor = '#dc2626';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.borderLeftColor = 'transparent';
+                        }}
+                    >
+                        <LogOut style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+                        Logout
+                    </button>
                 </div>
             </div>
             <style>{`
@@ -1900,11 +2138,27 @@ export function UserProfile() {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
+                @keyframes slideInLeft {
+                    from {
+                        transform: translateX(-100%);
+                    }
+                    to {
+                        transform: translateX(0);
+                    }
+                }
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
+                }
             `}</style>
 
             {/* Message Toast */}
             {message && (
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 28px', marginTop: '20px' }}>
+                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '0 28px', marginTop: '20px' }}>
                     <div style={{
                         padding: '16px 20px',
                         borderRadius: '12px',
@@ -1941,7 +2195,7 @@ export function UserProfile() {
 
             {/* Loading State */}
             {isLoading ? (
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 28px', paddingTop: '80px', paddingBottom: '80px' }}>
+                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '0 28px', paddingTop: '80px', paddingBottom: '80px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{
                             width: '60px',
@@ -1957,7 +2211,7 @@ export function UserProfile() {
                 </div>
             ) : (
                 /* Content */
-                <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 28px' }}>
+                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 28px' }}>
                     <SectionCard title="Basic Information">
                         {renderBasicInfo()}
                     </SectionCard>
