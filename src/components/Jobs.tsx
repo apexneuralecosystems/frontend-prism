@@ -32,16 +32,20 @@ interface JobPost {
 const JobCard = ({
     job,
     onApply,
+    onShowMore,
     isApplied,
     applicationStatus,
     showApplyButton = true,
+    showMoreOnly = false,
     isProcessing = false
 }: {
     job: JobPost;
     onApply?: (jobId: string) => void;
+    onShowMore?: (jobId: string) => void;
     isApplied: boolean;
     applicationStatus?: string;
     showApplyButton?: boolean;
+    showMoreOnly?: boolean;
     isProcessing?: boolean;
 }) => {
     const formatDate = (dateString: string) => {
@@ -170,7 +174,37 @@ const JobCard = ({
                         )}
                     </div>
 
-                    {showApplyButton && (
+                    {(showMoreOnly && onShowMore) ? (
+                        <button
+                            onClick={() => onShowMore(job.job_id)}
+                            style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px', 
+                                padding: '10px 20px',
+                                borderRadius: '8px',
+                                fontWeight: '500',
+                                fontSize: '14px',
+                                border: 'none',
+                                cursor: 'pointer',
+                                background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
+                                color: '#ffffff',
+                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                                transition: 'all 0.15s ease',
+                                transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                            }}
+                        >
+                            Show More
+                        </button>
+                    ) : showApplyButton && (
                         <button
                             onClick={() => onApply?.(job.job_id)}
                             disabled={isApplied || isProcessing}
@@ -362,7 +396,6 @@ export function Jobs() {
                 return;
             }
 
-            // Send application - backend will handle LLM processing
             const res = await authenticatedFetch(
                 `${API_ENDPOINTS.ORGANIZATION_JOBPOST}/${jobId}/apply`,
                 {
@@ -385,6 +418,7 @@ export function Jobs() {
             }
 
             if (res.ok) {
+                const result = await res.json();
                 // Remove job from all jobs list
                 const appliedJob = jobs.find(job => job.job_id === jobId);
                 setJobs(prevJobs => prevJobs.filter(job => job.job_id !== jobId));
@@ -397,7 +431,7 @@ export function Jobs() {
                     setAppliedJobs(prev => [...prev, { ...appliedJob, application_status: 'pending' } as any]);
                 }
                 
-                setMessage({ type: 'success', text: 'Application submitted successfully! Your profile is being processed...' });
+                setMessage({ type: 'success', text: result.message || 'Job applied' });
                 
                 // Refresh applied jobs after a delay to get the processed data
                 setTimeout(async () => {
@@ -925,7 +959,9 @@ export function Jobs() {
                                         <JobCard
                                             key={job.job_id}
                                             job={job}
-                                                onApply={openApplyForm}
+                                            onShowMore={(id) => navigate(`/jobs/${id}`)}
+                                            showMoreOnly
+                                            showApplyButton={false}
                                             isApplied={appliedJobIds.has(job.job_id)}
                                             isProcessing={processingJobId === job.job_id}
                                         />

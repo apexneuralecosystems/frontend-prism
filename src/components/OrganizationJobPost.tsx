@@ -472,6 +472,8 @@ export function OrganizationJobPost() {
         notes: '',
         jd_file: null as File | null
     });
+    const [postOnLinkedIn, setPostOnLinkedIn] = useState(false);
+    const [linkedInStatus, setLinkedInStatus] = useState<boolean | null>(null);
 
     useEffect(() => {
         // Check authentication and user type
@@ -597,6 +599,18 @@ export function OrganizationJobPost() {
             setMessage({ type: 'error', text: 'Job description file is required' });
             return;
         }
+        if (postOnLinkedIn) {
+            if (linkedInStatus !== true) {
+                const isOwner = userData?.role === 'owner' || !userData?.is_org_member;
+                setMessage({
+                    type: 'error',
+                    text: isOwner
+                        ? 'Connect LinkedIn first in your profile, then proceed.'
+                        : 'Ask the owner of your organization to connect LinkedIn, then proceed.'
+                });
+                return;
+            }
+        }
 
         setLoading(true);
         setMessage(null);
@@ -626,6 +640,20 @@ export function OrganizationJobPost() {
             if (res.ok) {
                 const result = await res.json();
                 setMessage({ type: 'success', text: 'Job posting created successfully!' });
+                if (postOnLinkedIn && result.job_id) {
+                    try {
+                        const linkedInRes = await authenticatedFetch(
+                            API_ENDPOINTS.LINKEDIN_POST_JOB(result.job_id),
+                            { method: 'POST' },
+                            navigate
+                        );
+                        if (linkedInRes?.ok) {
+                            setMessage({ type: 'success', text: 'Job posting created and posted to LinkedIn!' });
+                        }
+                    } catch {
+                        // Job was created; LinkedIn post failed silently or already shown
+                    }
+                }
                 setShowForm(false);
                 // Reset form
                 setFormData({
@@ -638,6 +666,7 @@ export function OrganizationJobPost() {
                     notes: '',
                     jd_file: null
                 });
+                setPostOnLinkedIn(false);
                 // Refresh jobs list
                 fetchAllJobs();
             } else {
@@ -692,6 +721,29 @@ export function OrganizationJobPost() {
         localStorage.removeItem("user");
         navigate("/");
     };
+
+    // Fetch LinkedIn status when post form is opened (org owner's connection)
+    useEffect(() => {
+        if (!showForm) return;
+        const fetchLinkedInStatus = async () => {
+            try {
+                const res = await authenticatedFetch(
+                    API_ENDPOINTS.LINKEDIN_STATUS,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (res?.ok) {
+                    const result = await res.json();
+                    setLinkedInStatus(result.connected === true);
+                } else {
+                    setLinkedInStatus(false);
+                }
+            } catch {
+                setLinkedInStatus(false);
+            }
+        };
+        fetchLinkedInStatus();
+    }, [showForm, navigate]);
 
     // Close sidebar when clicking outside
     useEffect(() => {
@@ -1581,6 +1633,20 @@ export function OrganizationJobPost() {
                                     rows={4}
                                     placeholder="Any additional information about the job..."
                                 />
+                            </div>
+
+                            {/* Post on LinkedIn - org only */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <input
+                                    type="checkbox"
+                                    id="post-on-linkedin"
+                                    checked={postOnLinkedIn}
+                                    onChange={(e) => setPostOnLinkedIn(e.target.checked)}
+                                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                                <label htmlFor="post-on-linkedin" style={{ cursor: 'pointer', fontWeight: '500', color: '#475569' }}>
+                                    Post this job on LinkedIn
+                                </label>
                             </div>
 
                             {/* Submit Button */}

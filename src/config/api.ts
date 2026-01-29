@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
   SEND_OFFER_LETTER: `${API_BASE_URL}/api/send-offer-letter`,
   SUBMIT_OFFER_RESPONSE: `${API_BASE_URL}/api/submit-offer-response`,
   JOBS: `${API_BASE_URL}/api/jobs`,
+  GET_JOB: (jobId: string) => `${API_BASE_URL}/api/jobs/${jobId}`,
   JOBS_APPLIED: `${API_BASE_URL}/api/jobs/applied`,
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,
   UPLOAD: `${API_BASE_URL}/api/upload`,
@@ -38,6 +39,10 @@ export const API_ENDPOINTS = {
   CAPTURE_ORDER: `${API_BASE_URL}/api/payments/capture-order`,
   ORGANIZATION_CREDITS: `${API_BASE_URL}/api/organization/credits`,
   PAYMENT_HISTORY: `${API_BASE_URL}/api/organization/payment-history`,
+  // LinkedIn (org-only)
+  LINKEDIN_CONNECT: `${API_BASE_URL}/api/oauth/linkedin/connect`,
+  LINKEDIN_STATUS: `${API_BASE_URL}/api/oauth/linkedin/status`,
+  LINKEDIN_POST_JOB: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/post-linkedin`,
 } as const;
 
 // Export the base URL for use in other files

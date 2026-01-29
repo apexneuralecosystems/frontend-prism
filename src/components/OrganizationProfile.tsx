@@ -145,6 +145,7 @@ export function OrganizationProfile() {
     const [showBuyCreditsModal, setShowBuyCreditsModal] = useState(false);
     const [numCreditsToBuy, setNumCreditsToBuy] = useState<number>(1);
     const [paymentLoading, setPaymentLoading] = useState(false);
+    const [paymentError, setPaymentError] = useState<string | null>(null);
     const [paymentHistory, setPaymentHistory] = useState<Array<{
         id: string;
         amount: number;
@@ -153,6 +154,8 @@ export function OrganizationProfile() {
         description: string;
         created_at: string;
     }>>([]);
+    const [linkedInConnected, setLinkedInConnected] = useState<boolean | null>(null);
+    const [linkedInConnecting, setLinkedInConnecting] = useState(false);
 
     useEffect(() => {
         // Check if we're returning from a payment (check URL params or localStorage flag)
@@ -324,19 +327,41 @@ export function OrganizationProfile() {
                 setPaymentHistory([]);
             }
         };
+
+        const fetchLinkedInStatus = async () => {
+            try {
+                const res = await authenticatedFetch(
+                    API_ENDPOINTS.LINKEDIN_STATUS,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (res?.ok) {
+                    const result = await res.json();
+                    setLinkedInConnected(result.connected === true);
+                } else {
+                    setLinkedInConnected(false);
+                }
+            } catch {
+                setLinkedInConnected(false);
+            }
+        };
         
-        // Fetch credits and payment history
+        // Fetch credits, payment history, and LinkedIn status (org)
         const fetchAll = async () => {
             await Promise.all([
                 fetchCredits(),
-                fetchPaymentHistory()
+                fetchPaymentHistory(),
+                fetchLinkedInStatus()
             ]);
         };
         
         fetchAll();
         
-        // If returning from payment, refresh immediately
-        if (paymentSuccess) {
+        // If returning from payment or LinkedIn connect, refresh immediately
+        if (paymentSuccess || urlParams.get('linkedin_connected') === '1') {
+            if (urlParams.get('linkedin_connected') === '1') {
+                window.history.replaceState({}, '', window.location.pathname);
+            }
             setTimeout(() => {
                 fetchAll();
             }, 1000);
@@ -749,13 +774,14 @@ export function OrganizationProfile() {
         }
     };
 
-    const handleBuyCredits = async () => {
+    const handleBuyCredits = async (paymentMethod: 'paypal' | 'razorpay') => {
         if (numCreditsToBuy < 1) {
-            setMessage({ type: 'error', text: 'Please select at least 1 credit' });
+            setPaymentError('Please select at least 1 credit');
             return;
         }
         
         setPaymentLoading(true);
+        setPaymentError(null);
         setMessage(null);
         try {
             const res = await authenticatedFetch(
@@ -763,25 +789,123 @@ export function OrganizationProfile() {
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ num_credits: numCreditsToBuy })
+                    body: JSON.stringify({
+                        num_credits: numCreditsToBuy,
+                        payment_method: paymentMethod
+                    })
                 },
                 navigate
             );
             
-            if (res?.ok) {
-                const result = await res.json();
+            if (res === null) {
+                setPaymentError('Session expired or not authorized. Please log in again.');
+                setPaymentLoading(false);
+                return;
+            }
+            
+            if (!res.ok) {
+                let detail = 'Failed to create payment order';
+                try {
+                    const error = await res.json();
+                    const d = error?.detail;
+                    detail = Array.isArray(d) ? (d[0]?.msg || String(d[0])) : (typeof d === 'string' ? d : detail);
+                } catch (_) {}
+                setPaymentError(detail);
+                setPaymentLoading(false);
+                return;
+            }
+
+            const result = await res.json();
+            if (paymentMethod === 'paypal' && result.approval_url) {
+                window.location.href = result.approval_url;
+                return;
+            }
+
+            // Razorpay: accept razorpay_order_id or order_id (backend may return both)
+            const razorpayOrderId = result.razorpay_order_id ?? result.order_id;
+            const razorpayKeyId = result.razorpay_key_id;
+            if (paymentMethod === 'razorpay' && razorpayOrderId && razorpayKeyId) {
+                const Razorpay = (window as any).Razorpay;
+                if (!Razorpay) {
+                    setPaymentError('Razorpay checkout script did not load. Please refresh the page and try again.');
+                    setPaymentLoading(false);
+                    return;
+                }
+                const userData = localStorage.getItem('user');
+                const parsedUser = userData ? JSON.parse(userData) : {};
+                const orgEmail = parsedUser.org_email || parsedUser.email;
+                const options = {
+                    key: razorpayKeyId,
+                    amount: result.amount_paise,
+                    currency: result.currency || 'INR',
+                    order_id: razorpayOrderId,
+                    name: 'Prism ApexNeural',
+                    description: `Purchase ${result.num_credits} credit(s)`,
+                    handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+                        try {
+                            const captureRes = await authenticatedFetch(
+                                API_ENDPOINTS.CAPTURE_ORDER,
+                                {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        order_id: result.order_id,
+                                        org_email: orgEmail,
+                                        payment_id: response.razorpay_payment_id,
+                                        signature: response.razorpay_signature
+                                    })
+                                },
+                                navigate
+                            );
+                            if (captureRes?.ok) {
+                                sessionStorage.setItem('razorpay_order_id', result.order_id);
+                                sessionStorage.setItem('payment_success', 'true');
+                                navigate(`/payment/success?order_id=${result.order_id}`);
+                            } else {
+                                const errData = await captureRes?.json();
+                                setPaymentError(errData?.detail || 'Payment verification failed');
+                                setPaymentLoading(false);
+                            }
+                        } catch (e) {
+                            console.error('Razorpay verify error:', e);
+                            setPaymentError('Payment verification failed');
+                            setPaymentLoading(false);
+                        }
+                    },
+                    modal: {
+                        ondismiss: () => setPaymentLoading(false)
+                    }
+                };
+                try {
+                    const rzp = new Razorpay(options);
+                    rzp.on('payment.failed', () => {
+                        setPaymentError('Payment failed or was cancelled');
+                        setPaymentLoading(false);
+                    });
+                    rzp.open();
+                } catch (rzpErr: any) {
+                    console.error('Razorpay open error:', rzpErr);
+                    setPaymentError(rzpErr?.message || 'Could not open Razorpay checkout');
+                }
+                setPaymentLoading(false);
+                return;
+            }
+
+            if (paymentMethod === 'razorpay') {
                 if (result.approval_url) {
-                    // Redirect to PayPal
-                    window.location.href = result.approval_url;
+                    setPaymentError('Server returned PayPal instead of Razorpay. Check backend received payment_method.');
+                } else if (!razorpayKeyId) {
+                    setPaymentError('Server did not return Razorpay key. Set RAZORPAY_KEY_ID in backend .env and restart.');
+                } else {
+                    setPaymentError('Server response missing Razorpay order. Check backend logs for errors.');
                 }
             } else {
-                const error = await res?.json();
-                setMessage({ type: 'error', text: error.detail || 'Failed to create payment order' });
-                setPaymentLoading(false);
+                setPaymentError('Invalid response from payment server');
             }
-        } catch (err) {
+            setPaymentLoading(false);
+        } catch (err: any) {
             console.error('Failed to buy credits:', err);
-            setMessage({ type: 'error', text: 'Failed to initiate payment' });
+            setPaymentError(err?.message || 'Failed to initiate payment');
             setPaymentLoading(false);
         }
     };
@@ -2454,6 +2578,71 @@ export function OrganizationProfile() {
                         {renderLinks()}
                     </SectionCard>
 
+                    {/* LinkedIn Connect - owner only, below Social Links */}
+                    {isOwner && (
+                        <div style={{
+                            padding: '16px',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            marginTop: '8px',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Linkedin style={{ width: '20px', height: '20px', color: '#0a66c2' }} />
+                                    <span style={{ fontWeight: '600', color: '#334155' }}>LinkedIn Connect</span>
+                                    <span style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        background: linkedInConnected === true ? '#dcfce7' : linkedInConnected === false ? '#fee2e2' : '#e2e8f0',
+                                        color: linkedInConnected === true ? '#166534' : linkedInConnected === false ? '#991b1b' : '#64748b'
+                                    }}>
+                                        {linkedInConnected === true ? 'Connected' : linkedInConnected === false ? 'Not connected' : '…'}
+                                    </span>
+                                </div>
+                                {linkedInConnected === false && (
+                                    <button
+                                        type="button"
+                                        disabled={linkedInConnecting}
+                                        onClick={async () => {
+                                            setLinkedInConnecting(true);
+                                            try {
+                                                const res = await authenticatedFetch(
+                                                    API_ENDPOINTS.LINKEDIN_CONNECT,
+                                                    { method: 'GET' },
+                                                    navigate
+                                                );
+                                                if (res?.ok) {
+                                                    const data = await res.json();
+                                                    if (data.authorization_url) {
+                                                        window.location.href = data.authorization_url;
+                                                    }
+                                                }
+                                            } finally {
+                                                setLinkedInConnecting(false);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: '#0a66c2',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            fontWeight: '500',
+                                            cursor: linkedInConnecting ? 'not-allowed' : 'pointer',
+                                            fontSize: '14px'
+                                        }}
+                                    >
+                                        {linkedInConnecting ? 'Connecting…' : 'Connect LinkedIn'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <SectionCard title="Our Employees" icon={Users}>
                         {renderEmployees()}
                     </SectionCard>
@@ -2685,6 +2874,7 @@ export function OrganizationProfile() {
                     if (!paymentLoading) {
                         setShowBuyCreditsModal(false);
                         setNumCreditsToBuy(1);
+                        setPaymentError(null);
                     }
                 }}
                 >
@@ -2758,17 +2948,37 @@ export function OrganizationProfile() {
                             </p>
                         </div>
                         
+                        {paymentError && (
+                            <div style={{
+                                padding: '12px',
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                borderRadius: '8px',
+                                marginBottom: '16px',
+                                color: '#991b1b',
+                                fontSize: '14px'
+                            }}>
+                                {paymentError}
+                            </div>
+                        )}
+                        <p style={{
+                            fontSize: '13px',
+                            color: '#64748b',
+                            marginBottom: '12px'
+                        }}>
+                            Choose payment method:
+                        </p>
                         <div style={{
                             display: 'flex',
-                            gap: '12px'
+                            flexDirection: 'column',
+                            gap: '10px'
                         }}>
                             <button
-                                onClick={handleBuyCredits}
+                                onClick={() => handleBuyCredits('paypal')}
                                 disabled={paymentLoading}
                                 style={{
-                                    flex: 1,
                                     padding: '10px 20px',
-                                    background: paymentLoading ? '#94a3b8' : '#2563eb',
+                                    background: paymentLoading ? '#94a3b8' : '#003087',
                                     color: '#ffffff',
                                     border: 'none',
                                     borderRadius: '8px',
@@ -2778,16 +2988,36 @@ export function OrganizationProfile() {
                                     fontSize: '14px'
                                 }}
                             >
-                                {paymentLoading ? 'Processing...' : 'Proceed to Payment'}
+                                {paymentLoading ? 'Processing...' : 'Pay with PayPal'}
                             </button>
+                            <button
+                                onClick={() => handleBuyCredits('razorpay')}
+                                disabled={paymentLoading}
+                                style={{
+                                    padding: '10px 20px',
+                                    background: paymentLoading ? '#94a3b8' : '#3395ff',
+                                    color: '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: '500',
+                                    cursor: paymentLoading ? 'not-allowed' : 'pointer',
+                                    transition: 'background 0.15s ease',
+                                    fontSize: '14px'
+                                }}
+                            >
+                                {paymentLoading ? 'Processing...' : 'Pay with Razorpay (INR)'}
+                            </button>
+                        </div>
+                        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
                             <button
                                 onClick={() => {
                                     setShowBuyCreditsModal(false);
                                     setNumCreditsToBuy(1);
+                                    setPaymentError(null);
                                 }}
                                 disabled={paymentLoading}
                                 style={{
-                                    padding: '10px 20px',
+                                    padding: '8px 16px',
                                     background: '#f1f5f9',
                                     color: '#334155',
                                     border: 'none',

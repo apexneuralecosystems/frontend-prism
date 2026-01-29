@@ -5,6 +5,7 @@ import { OrganizationProfile } from "./components/OrganizationProfile";
 import { OrganizationTeam } from "./components/OrganizationTeam";
 import { OrganizationJobPost } from "./components/OrganizationJobPost";
 import { Jobs } from "./components/Jobs";
+import { JobDetail } from "./components/JobDetail";
 import { ManageJobs } from "./components/ManageJobs";
 import { Auth } from "./components/Auth";
 import { ScheduleInterview } from "./components/ScheduleInterview";
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/organization-jobpost" element={<OrganizationJobPost />} />
         <Route path="/manage-jobs" element={<ManageJobs />} />
         <Route path="/jobs" element={<Jobs />} />
+        <Route path="/jobs/:jobId" element={<JobDetail />} />
         <Route path="/schedule-interview" element={<ScheduleInterview />} />
         <Route path="/ai-interview" element={<AIInterview />} />
         <Route path="/interview-feedback" element={<InterviewFeedback />} />
