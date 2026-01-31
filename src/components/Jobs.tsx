@@ -272,23 +272,9 @@ const JobCard = ({
 
 export function Jobs() {
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState<'all' | 'applied'>('all');
-    const [jobs, setJobs] = useState<JobPost[]>([]);
     const [appliedJobs, setAppliedJobs] = useState<JobPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [userData, setUserData] = useState<any>(null);
-    const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
-    const [processingJobId, setProcessingJobId] = useState<string | null>(null);
-    const [showApplyForm, setShowApplyForm] = useState(false);
-    const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-    const [applyForm, setApplyForm] = useState({
-        currentCtc: '',
-        expectedCtc: '',
-        noticePeriod: '',
-        expectedDoj: ''
-    });
-    const [formError, setFormError] = useState<string | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [menuHovered, setMenuHovered] = useState(false);
 
@@ -308,7 +294,6 @@ export function Jobs() {
                 navigate('/');
                 return;
             }
-            setUserData(parsedUser);
         }
 
         // Fetch jobs data
@@ -317,38 +302,12 @@ export function Jobs() {
 
     const fetchAllJobs = async () => {
         try {
-            // Fetch both all jobs and applied jobs
-            const [allJobsRes, appliedJobsRes] = await Promise.all([
-                authenticatedFetch(API_ENDPOINTS.JOBS, { method: 'GET' }, navigate),
-                authenticatedFetch(API_ENDPOINTS.JOBS_APPLIED, { method: 'GET' }, navigate)
-            ]);
+            const appliedJobsRes = await authenticatedFetch(API_ENDPOINTS.JOBS_APPLIED, { method: 'GET' }, navigate);
 
-            // First, get applied jobs to create a set of applied job IDs
-            const appliedJobIdsSet = new Set<string>();
             if (appliedJobsRes && appliedJobsRes.ok) {
                 const appliedResult = await appliedJobsRes.json();
-                const appliedJobsList = appliedResult.jobs || [];
-                appliedJobsList.forEach((appliedJob: any) => {
-                    if (appliedJob.job_id) {
-                        appliedJobIdsSet.add(appliedJob.job_id);
-                    }
-                });
-                setAppliedJobs(appliedJobsList);
-                setAppliedJobIds(appliedJobIdsSet);
-            }
-
-            // Handle all jobs - filter out any jobs that are in the applied jobs list
-            if (allJobsRes && allJobsRes.ok) {
-                const result = await allJobsRes.json();
-                const openJobs = result.jobs || [];
-
-                // Filter out applied jobs from the all jobs list
-                const unappliedJobs = openJobs.filter((job: JobPost) => 
-                    !appliedJobIdsSet.has(job.job_id)
-                );
-
-                setJobs(unappliedJobs);
-            } else if (allJobsRes && allJobsRes.status === 401) {
+                setAppliedJobs(appliedResult.jobs || []);
+            } else if (appliedJobsRes && appliedJobsRes.status === 401) {
                 clearAuthAndRedirect(navigate);
                 return;
             }
@@ -356,137 +315,10 @@ export function Jobs() {
             setMessage(null);
         } catch (err) {
             console.error('Failed to fetch jobs:', err);
-            setMessage({ type: 'error', text: 'Error loading jobs' });
+            setMessage({ type: 'error', text: 'Error loading applications' });
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleApply = async (jobId: string, additionalDetails?: string) => {
-        if (!userData || processingJobId) return; // Prevent multiple clicks
-
-        setProcessingJobId(jobId); // Set processing state
-        setMessage({ type: 'success', text: 'Processing your application...' });
-
-        try {
-            // Fetch user's profile to get resume_url
-            let resumeUrl = '';
-            try {
-                const profileRes = await authenticatedFetch(
-                    API_ENDPOINTS.USER_PROFILE,
-                    { method: 'GET' },
-                    navigate
-                );
-                if (profileRes && profileRes.ok) {
-                    const profile = await profileRes.json();
-                    // Check both camelCase and snake_case (frontend uses camelCase, backend might use snake_case)
-                    resumeUrl = profile?.profile?.resumeUrl || profile?.profile?.resume_url || '';
-                    console.log('📄 [Frontend] Resume URL from profile:', resumeUrl);
-                }
-            } catch (err) {
-                console.error('Failed to fetch profile:', err);
-                setMessage({ type: 'error', text: 'Please complete your profile with a resume before applying' });
-                setProcessingJobId(null);
-                return;
-            }
-
-            if (!resumeUrl) {
-                setMessage({ type: 'error', text: 'Please upload your resume in your profile before applying' });
-                setProcessingJobId(null);
-                return;
-            }
-
-            const res = await authenticatedFetch(
-                `${API_ENDPOINTS.ORGANIZATION_JOBPOST}/${jobId}/apply`,
-                {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name: userData.name,
-                        email: userData.email,
-                        resume_url: resumeUrl,
-                        additional_details: additionalDetails || ''
-                    })
-                },
-                navigate
-            );
-
-            if (!res) {
-                setMessage({ type: 'error', text: 'Failed to connect to server' });
-                setProcessingJobId(null);
-                return;
-            }
-
-            if (res.ok) {
-                const result = await res.json();
-                // Remove job from all jobs list
-                const appliedJob = jobs.find(job => job.job_id === jobId);
-                setJobs(prevJobs => prevJobs.filter(job => job.job_id !== jobId));
-                
-                // Add to applied job IDs set
-                setAppliedJobIds(prev => new Set([...prev, jobId]));
-                
-                // Add to applied jobs list with pending status
-                if (appliedJob) {
-                    setAppliedJobs(prev => [...prev, { ...appliedJob, application_status: 'pending' } as any]);
-                }
-                
-                setMessage({ type: 'success', text: result.message || 'Job applied' });
-                
-                // Refresh applied jobs after a delay to get the processed data
-                setTimeout(async () => {
-                    try {
-                        const appliedRes = await authenticatedFetch(API_ENDPOINTS.JOBS_APPLIED, { method: 'GET' }, navigate);
-                        if (appliedRes && appliedRes.ok) {
-                            const result = await appliedRes.json();
-                            setAppliedJobs(result.jobs || []);
-                        }
-                    } catch (err) {
-                        console.error('Failed to refresh applied jobs:', err);
-                    }
-                }, 5000); // Wait 5 seconds for backend LLM processing
-            } else {
-                const error = await res.json();
-                setMessage({ type: 'error', text: error.detail || 'Failed to apply for the job' });
-            }
-        } catch (err: any) {
-            console.error('Failed to apply for job:', err);
-            setMessage({ type: 'error', text: err.message || 'Error applying for the job' });
-        } finally {
-            setProcessingJobId(null);
-        }
-    };
-
-    const openApplyForm = (jobId: string) => {
-        setSelectedJobId(jobId);
-        setFormError(null);
-        setShowApplyForm(true);
-    };
-
-    const submitApplyForm = async () => {
-        if (!selectedJobId) return;
-        if (!applyForm.currentCtc || !applyForm.expectedCtc || !applyForm.noticePeriod || !applyForm.expectedDoj) {
-            setFormError('Please fill all fields');
-            return;
-        }
-
-        const additionalDetails = [
-            `Current CTC: ${applyForm.currentCtc}`,
-            `Expected CTC: ${applyForm.expectedCtc}`,
-            `Notice Period: ${applyForm.noticePeriod}`,
-            `Expected Date of Joining: ${applyForm.expectedDoj}`
-        ].join('\n');
-
-        setShowApplyForm(false);
-        await handleApply(selectedJobId, additionalDetails);
-        setApplyForm({ currentCtc: '', expectedCtc: '', noticePeriod: '', expectedDoj: '' });
-        setSelectedJobId(null);
-    };
-
-    const closeApplyForm = () => {
-        setShowApplyForm(false);
-        setSelectedJobId(null);
-        setFormError(null);
     };
 
     const handleLogout = async () => {
@@ -528,7 +360,7 @@ export function Jobs() {
         };
     }, [isSidebarOpen]);
 
-    if (loading && jobs.length === 0 && appliedJobs.length === 0) {
+    if (loading) {
         return (
             <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #e0f2fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ textAlign: 'center' }}>
@@ -541,7 +373,7 @@ export function Jobs() {
                         animation: 'spin 1s linear infinite',
                         margin: '0 auto 16px'
                     }}></div>
-                    <p style={{ color: '#475569', fontSize: '16px', fontWeight: '500' }}>Loading jobs...</p>
+                    <p style={{ color: '#475569', fontSize: '16px', fontWeight: '500' }}>Loading applications...</p>
                 </div>
             </div>
         );
@@ -601,8 +433,8 @@ export function Jobs() {
                                 <Briefcase style={{ width: '24px', height: '24px', color: '#ffffff' }} />
                             </div>
                             <div>
-                                <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>Available Jobs</h1>
-                                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Discover and apply to opportunities</p>
+                                <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>My Applications</h1>
+                                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Track your job applications</p>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -876,212 +708,55 @@ export function Jobs() {
 
             {/* Content */}
             <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 24px' }}>
-                {/* Tabs */}
-                <div style={{ marginBottom: '24px' }}>
-                    <div style={{ borderBottom: '2px solid #e2e8f0' }}>
-                        <nav style={{ display: 'flex', gap: '32px', marginBottom: '-2px' }}>
-                            {[
-                                { id: 'all', label: 'All Jobs', count: jobs.length },
-                                { id: 'applied', label: 'Applied Jobs', count: appliedJobs.length }
-                            ].map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
-                                    style={{ 
-                                        padding: '12px 4px',
-                                        borderBottom: activeTab === tab.id ? '3px solid #2563eb' : '3px solid transparent',
-                                        fontWeight: '600',
-                                        fontSize: '15px',
-                                        color: activeTab === tab.id ? '#2563eb' : '#64748b',
-                                        background: 'none',
-                                        border: 'none',
-                                        borderBottom: activeTab === tab.id ? '3px solid #2563eb' : '3px solid transparent',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== tab.id) {
-                                            e.currentTarget.style.color = '#475569';
-                                            e.currentTarget.style.borderBottom = '3px solid #cbd5e1';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== tab.id) {
-                                            e.currentTarget.style.color = '#64748b';
-                                            e.currentTarget.style.borderBottom = '3px solid transparent';
-                                        }
-                                    }}
-                                >
-                                    {tab.label} ({tab.count})
-                                </button>
-                            ))}
-                        </nav>
+                {appliedJobs.length === 0 ? (
+                    <div style={{ 
+                        textAlign: 'center', 
+                        padding: '80px 20px',
+                        background: '#ffffff',
+                        borderRadius: '16px',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
+                    }}>
+                        <div style={{ 
+                            background: 'linear-gradient(to bottom right, #dcfce7, #bbf7d0)',
+                            borderRadius: '20px',
+                            width: '120px',
+                            height: '120px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 24px'
+                        }}>
+                            <UserCheck style={{ width: '64px', height: '64px', color: '#16a34a' }} />
+                        </div>
+                        <h3 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>No applications yet</h3>
+                        <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>You haven't applied to any jobs yet. To apply, use the job link shared with you (e.g. /jobs/job-id).</p>
                     </div>
-                </div>
-
-                {/* Job Listings */}
-                {(() => {
-                    if (activeTab === 'all') {
-                        return jobs.length === 0 ? (
-                            <div style={{ 
-                                textAlign: 'center', 
-                                padding: '80px 20px',
-                                background: '#ffffff',
-                                borderRadius: '16px',
-                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
-                            }}>
-                                <div style={{ 
-                                    background: 'linear-gradient(to bottom right, #dbeafe, #e0e7ff)',
-                                    borderRadius: '20px',
-                                    width: '120px',
-                                    height: '120px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 24px'
-                                }}>
-                                    <Briefcase style={{ width: '64px', height: '64px', color: '#3b82f6' }} />
-                                </div>
-                                <h3 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>No jobs available</h3>
-                                <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>There are no open job positions at the moment. Check back later!</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div style={{ marginBottom: '24px', padding: '20px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' }}>
-                                    <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: '0 0 4px 0' }}>
-                                        Found {jobs.length} job{jobs.length !== 1 ? 's' : ''} available
-                                    </h2>
-                                    <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Apply to positions that match your skills and interests</p>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-                                    {jobs.map((job) => (
-                                        <JobCard
-                                            key={job.job_id}
-                                            job={job}
-                                            onShowMore={(id) => navigate(`/jobs/${id}`)}
-                                            showMoreOnly
-                                            showApplyButton={false}
-                                            isApplied={appliedJobIds.has(job.job_id)}
-                                            isProcessing={processingJobId === job.job_id}
-                                        />
-                                    ))}
-                                </div>
-                            </>
-                        );
-                    } else {
-                        return appliedJobs.length === 0 ? (
-                            <div style={{ 
-                                textAlign: 'center', 
-                                padding: '80px 20px',
-                                background: '#ffffff',
-                                borderRadius: '16px',
-                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)'
-                            }}>
-                                <div style={{ 
-                                    background: 'linear-gradient(to bottom right, #dcfce7, #bbf7d0)',
-                                    borderRadius: '20px',
-                                    width: '120px',
-                                    height: '120px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    margin: '0 auto 24px'
-                                }}>
-                                    <UserCheck style={{ width: '64px', height: '64px', color: '#16a34a' }} />
-                                </div>
-                                <h3 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>No applied jobs</h3>
-                                <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>You haven't applied to any jobs yet. Browse available jobs to get started!</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div style={{ marginBottom: '24px', padding: '20px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' }}>
-                                    <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: '0 0 4px 0' }}>
-                                        Your Applications ({appliedJobs.length})
-                                    </h2>
-                                    <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Track the status of jobs you've applied to</p>
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-                                    {appliedJobs.map((job: any) => (
-                                        <JobCard
-                                            key={job.job_id}
-                                            job={job}
-                                            onApply={undefined}
-                                            isApplied={true}
-                                            applicationStatus={job.application_status}
-                                            showApplyButton={false}
-                                        />
-                                    ))}
-                                </div>
-                            </>
-                        );
-                    }
-                })()}
-            </div>
-
-            {showApplyForm && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: 'min(480px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', display: 'grid', gap: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <h3 style={{ margin: 0 }}>Application Details</h3>
-                            <button onClick={closeApplyForm} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>
-                                <X />
-                            </button>
+                ) : (
+                    <>
+                        <div style={{ marginBottom: '24px', padding: '20px', background: '#ffffff', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)' }}>
+                            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: '0 0 4px 0' }}>
+                                Your Applications ({appliedJobs.length})
+                            </h2>
+                            <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>Track the status of jobs you've applied to</p>
                         </div>
 
-                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
-                            Current CTC
-                            <input
-                                type="number"
-                                value={applyForm.currentCtc}
-                                onChange={(e) => setApplyForm(f => ({ ...f, currentCtc: e.target.value }))}
-                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                            />
-                        </label>
-
-                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
-                            Expected CTC
-                            <input
-                                type="number"
-                                value={applyForm.expectedCtc}
-                                onChange={(e) => setApplyForm(f => ({ ...f, expectedCtc: e.target.value }))}
-                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                            />
-                        </label>
-
-                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
-                            Notice Period
-                            <input
-                                type="text"
-                                placeholder="e.g., 30 days"
-                                value={applyForm.noticePeriod}
-                                onChange={(e) => setApplyForm(f => ({ ...f, noticePeriod: e.target.value }))}
-                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                            />
-                        </label>
-
-                        <label style={{ display: 'grid', gap: '6px', fontSize: '14px' }}>
-                            Expected Date of Joining
-                            <input
-                                type="date"
-                                value={applyForm.expectedDoj}
-                                onChange={(e) => setApplyForm(f => ({ ...f, expectedDoj: e.target.value }))}
-                                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                            />
-                        </label>
-
-                        {formError && <div style={{ color: '#dc2626', fontSize: '13px' }}>{formError}</div>}
-
-                        <button
-                            onClick={submitApplyForm}
-                            style={{ padding: '12px', borderRadius: '8px', border: 'none', background: 'linear-gradient(to right, #2563eb, #1d4ed8)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
-                        >
-                            Submit
-                        </button>
-                    </div>
-                </div>
-            )}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+                            {appliedJobs.map((job: any) => (
+                                <JobCard
+                                    key={job.job_id}
+                                    job={job}
+                                    onShowMore={(id) => navigate(`/jobs/${id}`)}
+                                    showMoreOnly
+                                    onApply={undefined}
+                                    isApplied={true}
+                                    applicationStatus={job.application_status}
+                                    showApplyButton={false}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
 
             {/* Add keyframe animations */}
             <style>{`
