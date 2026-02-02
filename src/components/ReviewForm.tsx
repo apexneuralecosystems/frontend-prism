@@ -177,7 +177,7 @@ export function ReviewForm() {
                                 <div style={{ flex: 1 }}>
                                     <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '500' }}>Resume</p>
                                     <a 
-                                        href={`${API_BASE_URL}${reviewData.resume_url}`} 
+                                        href={reviewData.resume_url?.startsWith('http') ? reviewData.resume_url : `${API_BASE_URL}${reviewData.resume_url}`} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         style={{ 

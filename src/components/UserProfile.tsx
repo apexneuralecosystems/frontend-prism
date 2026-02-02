@@ -1633,7 +1633,7 @@ export function UserProfile() {
                         <p className="font-semibold text-gray-900 text-base">{data.resumeName || "No Resume Uploaded"}</p>
                         {data.resumeUrl && (
                             <a
-                                href={`${API_BASE_URL}${data.resumeUrl}`}
+                                href={data.resumeUrl?.startsWith('http') ? data.resumeUrl : `${API_BASE_URL}${data.resumeUrl}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-sm text-blue-600 font-medium hover:underline mt-1 inline-block"

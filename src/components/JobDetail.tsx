@@ -217,7 +217,7 @@ export function JobDetail() {
     }
 
     const typeColors = getJobTypeColor(job.job_type);
-    const jdUrl = job.file_path ? `${API_BASE_URL}${job.file_path.startsWith('/') ? '' : '/'}${job.file_path}` : '';
+    const jdUrl = job.file_path ? (job.file_path.startsWith('http') ? job.file_path : `${API_BASE_URL}${job.file_path.startsWith('/') ? '' : '/'}${job.file_path}`) : '';
     const isPdf = (job.file_path || '').toLowerCase().endsWith('.pdf');
     const applicationsOpen = job.job_status === 'open';
 

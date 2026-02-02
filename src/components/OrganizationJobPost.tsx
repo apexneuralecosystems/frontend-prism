@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Briefcase, Plus, X, FileText, MapPin, Users, Calendar,
     DollarSign, CheckCircle, AlertCircle, Upload, LogOut, Building2,
-    ChevronDown, ChevronRight, Eye, Menu, UserCircle
+    ChevronDown, ChevronRight, Eye, Menu, UserCircle, ArrowLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL } from '../config/api';
 
 // --- Types ---
 
@@ -92,6 +92,11 @@ const JobCard = ({
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ flex: 1 }}>
                     <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>{job.role}</h3>
+                    {job.job_id && (
+                        <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 6px 0', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                            ID: {job.job_id}
+                        </p>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                         <p style={{ color: '#64748b', margin: 0, fontSize: '14px', fontWeight: '500' }}>{job.company.name}</p>
                         {status === 'closed' ? (
@@ -207,7 +212,7 @@ const JobCard = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText style={{ width: '16px', height: '16px', color: '#64748b' }} />
                     <a
-                        href={`${API_ENDPOINTS.ORGANIZATION_JOBPOST.replace('/api/organization-jobpost', '')}${job.file_path}`}
+                        href={job.file_path?.startsWith('http') ? job.file_path : `${API_ENDPOINTS.ORGANIZATION_JOBPOST.replace('/api/organization-jobpost', '')}${job.file_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ 
@@ -267,18 +272,29 @@ const JobCard = ({
 
 // --- Applicants Modal Component ---
 
+const buildFileUrl = (path: string | undefined): string => {
+    if (!path) return '';
+    return path.startsWith('http') ? path : `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
+};
+
 const ApplicantsModal = ({
     job,
     isOpen,
     onClose,
-    filterStatus
+    filterStatus,
+    getApplicantsForJob
 }: {
     job: JobPost | null;
     isOpen: boolean;
     onClose: () => void;
     filterStatus?: string | null;
+    getApplicantsForJob?: (jobId: string) => Promise<{ applicants: any[] }>;
 }) => {
-    if (!isOpen || !job) return null;
+    const [offerAcceptedApplicants, setOfferAcceptedApplicants] = useState<any[]>([]);
+    const [loadingOfferAccepted, setLoadingOfferAccepted] = useState(false);
+    const [selectedApplicantForDetails, setSelectedApplicantForDetails] = useState<any | null>(null);
+    const [expandedRoundsDetail, setExpandedRoundsDetail] = useState<Set<string>>(new Set());
+    const [transcriptModal, setTranscriptModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-IN', {
@@ -290,12 +306,44 @@ const ApplicantsModal = ({
         });
     };
 
-    // Filter candidates based on filterStatus
-    const filteredCandidates = filterStatus
-        ? job.applied_candidates?.filter(candidate => candidate.status === filterStatus) || []
-        : job.applied_candidates || [];
+    // Reset expanded rounds when switching to a different applicant
+    useEffect(() => {
+        setExpandedRoundsDetail(new Set());
+    }, [selectedApplicantForDetails?.email]);
+
+    // When modal opens with offer_accepted, fetch full applicants; reset detail view
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedApplicantForDetails(null);
+            setOfferAcceptedApplicants([]);
+            setExpandedRoundsDetail(new Set());
+            setTranscriptModal({ show: false, data: null });
+            return;
+        }
+        if (isOpen && job && filterStatus === 'offer_accepted' && getApplicantsForJob) {
+            setSelectedApplicantForDetails(null);
+            setLoadingOfferAccepted(true);
+            getApplicantsForJob(job.job_id)
+                .then(({ applicants }) => {
+                    const accepted = (applicants || []).filter((a: any) => a.status === 'offer_accepted');
+                    setOfferAcceptedApplicants(accepted);
+                })
+                .catch(() => setOfferAcceptedApplicants([]))
+                .finally(() => setLoadingOfferAccepted(false));
+        }
+    }, [isOpen, job?.job_id, filterStatus, getApplicantsForJob]);
+
+    if (!isOpen || !job) return null;
+
+    // For offer_accepted use fetched full list; otherwise use job.applied_candidates
+    const filteredCandidates = filterStatus === 'offer_accepted' && offerAcceptedApplicants.length >= 0
+        ? offerAcceptedApplicants
+        : (filterStatus
+            ? job.applied_candidates?.filter((c: any) => c.status === filterStatus) || []
+            : job.applied_candidates || []);
 
     const displayTitle = filterStatus === 'offer_accepted' ? 'Candidates Who Accepted Offer' : 'All Applicants';
+    const isOfferAcceptedView = filterStatus === 'offer_accepted';
 
     return (
         <div style={{ 
@@ -358,10 +406,186 @@ const ApplicantsModal = ({
                 </div>
 
                 <div style={{ padding: '24px', overflowY: 'auto', maxHeight: '60vh' }}>
-                    {filteredCandidates && filteredCandidates.length > 0 ? (
+                    {selectedApplicantForDetails ? (
+                        /* Detail panel: resume, collected details, rounds, offer letter, when accepted */
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedApplicantForDetails(null)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    marginBottom: '20px',
+                                    padding: '8px 12px',
+                                    background: '#f1f5f9',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    color: '#475569',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <ArrowLeft style={{ width: '18px', height: '18px' }} />
+                                Back to list
+                            </button>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                    <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#1e293b' }}>{selectedApplicantForDetails.name || selectedApplicantForDetails.profile?.name}</h4>
+                                    <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>{selectedApplicantForDetails.email}</p>
+                                </div>
+                                {(selectedApplicantForDetails.resume_url || selectedApplicantForDetails.profile?.resume_url) && (
+                                    <div style={{ padding: '16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Resume</p>
+                                        <a href={buildFileUrl(selectedApplicantForDetails.resume_url || selectedApplicantForDetails.profile?.resume_url)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#2563eb', fontSize: '14px', textDecoration: 'none', fontWeight: '500' }}>
+                                            <FileText style={{ width: '16px', height: '16px' }} /> View / Download resume
+                                        </a>
+                                    </div>
+                                )}
+                                {(selectedApplicantForDetails.additional_details || selectedApplicantForDetails.profile?.additional_details) && (
+                                    <div style={{ padding: '16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Collected details</p>
+                                        <p style={{ margin: 0, fontSize: '14px', color: '#475569', whiteSpace: 'pre-wrap' }}>{selectedApplicantForDetails.additional_details || selectedApplicantForDetails.profile?.additional_details}</p>
+                                    </div>
+                                )}
+                                {((selectedApplicantForDetails.previous_rounds?.length) || (selectedApplicantForDetails.ongoing_rounds?.length)) > 0 && (
+                                    <div style={{ padding: '16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <p style={{ margin: '0 0 12px 0', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Rounds</p>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                            {(selectedApplicantForDetails.previous_rounds || []).map((r: any, i: number) => {
+                                                const key = `prev-${i}`;
+                                                const expanded = expandedRoundsDetail.has(key);
+                                                return (
+                                                    <div key={key} style={{ background: 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 6px rgba(0,0,0,0.04)' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const next = new Set(expandedRoundsDetail);
+                                                                if (expanded) next.delete(key); else next.add(key);
+                                                                setExpandedRoundsDetail(next);
+                                                            }}
+                                                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: '13px', color: '#475569' }}
+                                                        >
+                                                            <span style={{ fontWeight: '600', color: '#1e293b' }}>{r.round || 'Round'}</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                {r.interview_date && <span>{r.interview_date}</span>}
+                                                                {r.type === 'ai_interview' && <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>AI</span>}
+                                                                {expanded ? <ChevronDown style={{ width: '18px', height: '18px' }} /> : <ChevronRight style={{ width: '18px', height: '18px' }} />}
+                                                            </span>
+                                                        </button>
+                                                        {expanded && (
+                                                            <div style={{ padding: '0 14px 14px', borderTop: '1px solid #e2e8f0', fontSize: '12px' }}>
+                                                                {r.type === 'ai_interview' ? (
+                                                                    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={async () => {
+                                                                                if (!r.feedback_id) return;
+                                                                                try {
+                                                                                    const token = localStorage.getItem('access_token');
+                                                                                    if (!token) { alert('Please log in again'); return; }
+                                                                                    const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${r.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
+                                                                                    if (res?.ok) { const data = await res.json(); setTranscriptModal({ show: true, data }); } else { alert('Failed to load transcript.'); }
+                                                                                } catch { alert('Error loading transcript.'); }
+                                                                            }}
+                                                                            style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                                                                        >
+                                                                            View Transcript
+                                                                        </button>
+                                                                        {r.recording_path && (
+                                                                            <a href={r.recording_path.startsWith('http') ? r.recording_path : `${API_BASE_URL}${r.recording_path.startsWith('/') ? '' : '/'}${r.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                                                Download Recording
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    r.interviewer_name && (
+                                                                        <p style={{ color: '#475569', margin: '10px 0 4px 0' }}>
+                                                                            <span style={{ fontWeight: '600' }}>Interviewer:</span> {r.interviewer_name}{r.interviewer_email ? ` (${r.interviewer_email})` : ''}
+                                                                        </p>
+                                                                    )
+                                                                )}
+                                                                {r.interview_date && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Date:</span> {r.interview_date}</p>}
+                                                                {r.interview_time && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Time:</span> {r.interview_time}</p>}
+                                                                {(!r.type || r.type !== 'ai_interview') && (
+                                                                    <>
+                                                                        {r.candidate_attended && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Attended:</span> {r.candidate_attended}</p>}
+                                                                        {r.interview_outcome && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Outcome:</span> {r.interview_outcome}</p>}
+                                                                    </>
+                                                                )}
+                                                                {r.scores && (
+                                                                    <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>Scores</p>
+                                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '11px' }}>
+                                                                            {Object.entries(r.scores).map(([k, v]: [string, any]) => (
+                                                                                <p key={k} style={{ color: '#475569', margin: 0 }}><span style={{ fontWeight: '600' }}>{String(k).replace(/_/g, ' ')}:</span> {v}/5</p>
+                                                                            ))}
+                                                                        </div>
+                                                                        {r.comments && <p style={{ marginTop: '8px', color: '#475569', fontSize: '11px', whiteSpace: 'pre-wrap' }}>Comments: {r.comments}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            {(selectedApplicantForDetails.ongoing_rounds || []).map((r: any, i: number) => {
+                                                const key = `ongoing-${i}`;
+                                                const expanded = expandedRoundsDetail.has(key);
+                                                return (
+                                                    <div key={key} style={{ background: 'linear-gradient(to bottom right, #fef3c7, #fde68a)', border: '1px solid #fcd34d', borderRadius: '10px', overflow: 'hidden' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => { const next = new Set(expandedRoundsDetail); if (expanded) next.delete(key); else next.add(key); setExpandedRoundsDetail(next); }}
+                                                            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontSize: '13px', color: '#92400e' }}
+                                                        >
+                                                            <span style={{ fontWeight: '600' }}>{r.round || 'Round'}</span>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <span style={{ fontSize: '12px' }}>(ongoing)</span>
+                                                                {expanded ? <ChevronDown style={{ width: '18px', height: '18px' }} /> : <ChevronRight style={{ width: '18px', height: '18px' }} />}
+                                                            </span>
+                                                        </button>
+                                                        {expanded && (
+                                                            <div style={{ padding: '0 14px 14px', borderTop: '1px solid #fcd34d', fontSize: '12px', color: '#92400e' }}>
+                                                                {r.interview_date && <p style={{ margin: '10px 0 4px 0' }}><span style={{ fontWeight: '600' }}>Date:</span> {r.interview_date}</p>}
+                                                                {r.interview_time && <p style={{ margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Time:</span> {r.interview_time}</p>}
+                                                                {r.interviewer_name && <p style={{ margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {r.interviewer_name}</p>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                {(selectedApplicantForDetails.offer_letter_path) && (
+                                    <div style={{ padding: '16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Offer letter we sent</p>
+                                        <a href={buildFileUrl(selectedApplicantForDetails.offer_letter_path)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#2563eb', fontSize: '14px', textDecoration: 'none', fontWeight: '500' }}>
+                                            <FileText style={{ width: '16px', height: '16px' }} /> View / Download offer letter
+                                        </a>
+                                    </div>
+                                )}
+                                {(selectedApplicantForDetails.offer_responded_at || selectedApplicantForDetails.updated_at) && (
+                                    <div style={{ padding: '16px', background: '#dcfce7', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                                        <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>When they accepted</p>
+                                        <p style={{ margin: 0, fontSize: '14px', color: '#15803d' }}>
+                                            {formatDate(selectedApplicantForDetails.offer_responded_at || selectedApplicantForDetails.updated_at)}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : loadingOfferAccepted && isOfferAcceptedView ? (
+                        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <div style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+                            <p style={{ color: '#64748b', fontSize: '14px' }}>Loading candidates...</p>
+                        </div>
+                    ) : filteredCandidates && filteredCandidates.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             {filteredCandidates.map((candidate: any, index: number) => (
-                                <div key={index} style={{ 
+                                <div key={candidate._id || candidate.email || index} style={{ 
                                     border: '1px solid #e2e8f0', 
                                     borderRadius: '12px', 
                                     padding: '16px',
@@ -379,22 +603,35 @@ const ApplicantsModal = ({
                                 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
                                         <div>
-                                            <h4 style={{ fontWeight: '500', color: '#1e293b', margin: '0 0 4px 0', fontSize: '15px' }}>{candidate.name}</h4>
+                                            <h4 style={{ fontWeight: '500', color: '#1e293b', margin: '0 0 4px 0', fontSize: '15px' }}>{candidate.name || candidate.profile?.name}</h4>
                                             <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{candidate.email}</p>
                                         </div>
-                                        {candidate.applied_at && (
-                                            <p style={{ 
-                                                fontSize: '12px', 
-                                                color: '#94a3b8',
-                                                margin: 0,
-                                                padding: '4px 8px',
-                                                background: '#ffffff',
-                                                borderRadius: '6px',
-                                                border: '1px solid #e2e8f0'
-                                            }}>
-                                                Applied on {formatDate(candidate.applied_at)}
-                                            </p>
-                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {isOfferAcceptedView ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedApplicantForDetails(candidate)}
+                                                    style={{
+                                                        padding: '8px 14px',
+                                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        fontSize: '13px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    More details
+                                                </button>
+                                            ) : (
+                                                candidate.applied_at && (
+                                                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, padding: '4px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                                        Applied on {formatDate(candidate.applied_at)}
+                                                    </p>
+                                                )
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -413,28 +650,51 @@ const ApplicantsModal = ({
                                 justifyContent: 'center',
                                 margin: '0 auto 20px'
                             }}>
-                                <Users style={{ 
-                                    width: '48px', 
-                                    height: '48px', 
-                                    color: filterStatus === 'offer_accepted' ? '#16a34a' : '#3b82f6' 
-                                }} />
+                                <Users style={{ width: '48px', height: '48px', color: filterStatus === 'offer_accepted' ? '#16a34a' : '#3b82f6' }} />
                             </div>
                             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>
-                                {filterStatus === 'offer_accepted' 
-                                    ? 'No one accepted the offer yet' 
-                                    : 'No applicants yet'
-                                }
+                                {filterStatus === 'offer_accepted' ? 'No one accepted the offer yet' : 'No applicants yet'}
                             </h3>
                             <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>
                                 {filterStatus === 'offer_accepted'
                                     ? 'Candidates who accept your offer will appear here.'
-                                    : 'Applicants will appear here once candidates apply for this job.'
-                                }
+                                    : 'Applicants will appear here once candidates apply for this job.'}
                             </p>
                         </div>
                     )}
                 </div>
             </div>
+            {transcriptModal.show && transcriptModal.data && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '16px' }}>
+                    <div style={{ background: '#fff', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(to right, #6366f1, #8b5cf6)' }}>
+                            <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#fff' }}>
+                                {transcriptModal.data.applicant_name} • {transcriptModal.data.round}
+                            </p>
+                            <button type="button" onClick={() => setTranscriptModal({ show: false, data: null })} style={{ padding: '8px', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#fff' }}>
+                                <X style={{ width: '20px', height: '20px' }} />
+                            </button>
+                        </div>
+                        <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                            {transcriptModal.data.transcript && transcriptModal.data.transcript.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {transcriptModal.data.transcript.map((msg: any, idx: number) => (
+                                        <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', padding: '12px', background: msg.role === 'assistant' ? '#f0f7ff' : '#f0fdf4', borderRadius: '10px', borderLeft: `4px solid ${msg.role === 'assistant' ? '#667eea' : '#10b981'}` }}>
+                                            <span style={{ fontSize: '14px', flexShrink: 0 }}>{msg.role === 'assistant' ? '🤖' : '👤'}</span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '600' }}>{msg.role === 'assistant' ? 'AI' : 'Candidate'} • {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString() : ''}</div>
+                                                <div style={{ fontSize: '13px', color: '#1e293b', lineHeight: 1.5, wordBreak: 'break-word' }}>{msg.text}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p style={{ textAlign: 'center', color: '#94a3b8', margin: 0 }}>No transcript available</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -700,6 +960,17 @@ export function OrganizationJobPost() {
         setSelectedJobForApplicants(null);
         setApplicantFilterStatus(null);
     };
+
+    const getApplicantsForJob = useCallback(async (jobId: string) => {
+        const res = await authenticatedFetch(
+            API_ENDPOINTS.GET_JOB_APPLICANTS(jobId),
+            { method: 'GET' },
+            navigate
+        );
+        if (!res?.ok) return { applicants: [] };
+        const data = await res.json();
+        return { applicants: data.applicants || [] };
+    }, [navigate]);
 
     const handleLogout = async () => {
         const refreshToken = localStorage.getItem("refresh_token");
@@ -1860,6 +2131,7 @@ export function OrganizationJobPost() {
                 isOpen={showApplicantsModal}
                 onClose={handleCloseApplicantsModal}
                 filterStatus={applicantFilterStatus}
+                getApplicantsForJob={getApplicantsForJob}
             />
 
             {/* Add keyframe animations */}

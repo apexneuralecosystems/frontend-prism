@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Briefcase, Users, CheckCircle, X, Clock, UserCheck, LogOut,
-    ChevronDown, Mail, FileText, Download, Calendar, Menu, UserCircle
+    ChevronDown, Mail, FileText, Download, Calendar, Menu, UserCircle, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect, refreshAccessToken } from '../utils/auth';
@@ -50,6 +50,7 @@ export function ManageJobs() {
     // Schedule Interview form state
     const [teams, setTeams] = useState<any[]>([]);
     const [showScheduleForm, setShowScheduleForm] = useState<string | null>(null);
+    const [scheduleFormError, setScheduleFormError] = useState<string | null>(null);
     const [selectedRound, setSelectedRound] = useState<string>('');
     const [selectedTeam, setSelectedTeam] = useState<string>('');
     const [selectedLocationType, setSelectedLocationType] = useState<string>('');
@@ -75,6 +76,7 @@ export function ManageJobs() {
     const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [menuHovered, setMenuHovered] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     
     // Make setters globally accessible to bypass closure issues
     (window as any).openTranscriptModal = (data: any) => {
@@ -92,6 +94,13 @@ export function ManageJobs() {
         'Discussion Round',
         'Negotiation / Offer Round'
     ];
+
+    // When round changes to non–Initial Screening, clear AI interview so Team/Location dropdowns show
+    useEffect(() => {
+        if (selectedRound && selectedRound !== 'Initial Screening Round') {
+            setIsAIInterview(false);
+        }
+    }, [selectedRound]);
 
     const submitReviewRequest = async () => {
         if (!selectedJobId || !selectedApplicant || !reviewEmail) return;
@@ -281,25 +290,8 @@ export function ManageJobs() {
 
             if (res.ok) {
                 setMessage({ type: 'success', text: 'Status updated successfully!' });
-                // Refresh applicants
-                fetchApplicants(selectedJobId);
-                
-                // Navigate to appropriate tab based on status
-                if (newStatus === 'selected_for_interview') {
-                    setActiveTab('conduct_rounds');
-                } else if (newStatus === 'decision_pending_review') {
-                    setActiveTab('decision_review');
-                } else if (newStatus === 'selected') {
-                    setActiveTab('selected');
-                } else if (newStatus === 'processing') {
-                    setActiveTab('ongoing');
-                } else if (newStatus === 'offer_sent') {
-                    setActiveTab('offer_sent');
-                } else if (newStatus === 'offer_accepted') {
-                    setActiveTab('offer_accepted');
-                } else if (newStatus === 'decision_pending' || newStatus === 'applied') {
-                    setActiveTab('pending');
-                }
+                // Refresh applicants; stay on current tab (no tab switch)
+                await fetchApplicants(selectedJobId);
             } else {
                 const error = await res.json();
                 setMessage({ type: 'error', text: error.detail || 'Failed to update status' });
@@ -365,7 +357,6 @@ export function ManageJobs() {
                         setShowOfferForm(null);
                         setOfferLetterFile(null);
                         await fetchApplicants(selectedJobId);
-                        setActiveTab('offer_sent');
                     } else {
                         const error = await retryRes.json();
                         setMessage({ type: 'error', text: error.detail || 'Failed to send offer letter' });
@@ -380,7 +371,6 @@ export function ManageJobs() {
                 setShowOfferForm(null);
                 setOfferLetterFile(null);
                 await fetchApplicants(selectedJobId);
-                setActiveTab('offer_sent');
             } else {
                 const error = await res.json();
                 setMessage({ type: 'error', text: error.detail || 'Failed to send offer letter' });
@@ -412,6 +402,23 @@ export function ManageJobs() {
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
         navigate("/auth");
+    };
+
+    // Refresh jobs list and applicants for current job; keep dropdown and tab unchanged
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        setMessage(null);
+        try {
+            await fetchOngoingJobs();
+            if (selectedJobId) {
+                await fetchApplicants(selectedJobId);
+            }
+        } catch (err) {
+            console.error('Refresh failed:', err);
+            setMessage({ type: 'error', text: 'Failed to refresh data' });
+        } finally {
+            setRefreshing(false);
+        }
     };
 
     // Close sidebar when clicking outside
@@ -496,6 +503,7 @@ export function ManageJobs() {
             if (res && res.ok) {
                 const result = await res.json();
                 console.log('✅ Interview form email sent:', result);
+                setScheduleFormError(null);
                 setMessage({ type: 'success', text: 'Interview scheduling form has been sent to the applicant!' });
                 
                 // Close form and reset
@@ -505,22 +513,21 @@ export function ManageJobs() {
                 setSelectedLocationType('');
                 setIsAIInterview(false);
                 
-                // Refresh applicants to update status and move to invitation_sent tab
+                // Refresh applicants; stay on current tab
                 if (selectedJobId) {
                     await fetchApplicants(selectedJobId);
-                    // Switch to invitation_sent tab after refresh
-                    setTimeout(() => {
-                        setActiveTab('invitation_sent');
-                    }, 100);
                 }
             } else {
-                const errorData = await res?.json();
-                console.error('Failed to send interview form:', errorData);
-                setMessage({ type: 'error', text: errorData?.detail || 'Failed to send interview form. Please try again.' });
+                const errorData = await res?.json().catch(() => ({}));
+                const errorText = errorData?.detail || 'Failed to send interview form. Please try again.';
+                setScheduleFormError(errorText);
+                setMessage({ type: 'error', text: errorText });
             }
         } catch (error: any) {
             console.error('Error sending interview form:', error);
-            setMessage({ type: 'error', text: 'Error sending interview form. Please try again.' });
+            const errorText = 'Error sending interview form. Please try again.';
+            setScheduleFormError(errorText);
+            setMessage({ type: 'error', text: errorText });
         }
     };
 
@@ -994,50 +1001,89 @@ export function ManageJobs() {
                         <Briefcase style={{ width: '16px', height: '16px', display: 'inline', marginRight: '8px', verticalAlign: 'text-bottom', color: '#2563eb' }} />
                         Select Ongoing Job
                     </label>
-                    <div style={{ position: 'relative' }}>
-                        <select
-                            value={selectedJobId}
-                            onChange={(e) => handleJobSelect(e.target.value)}
-                            style={{ 
-                                width: '100%', 
-                                padding: '12px 40px 12px 16px', 
-                                border: '1px solid #cbd5e1', 
-                                borderRadius: '10px',
-                                fontSize: '14px',
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                            <select
+                                value={selectedJobId}
+                                onChange={(e) => handleJobSelect(e.target.value)}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '12px 40px 12px 16px', 
+                                    border: '1px solid #cbd5e1', 
+                                    borderRadius: '10px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    outline: 'none',
+                                    transition: 'all 0.15s ease',
+                                    background: '#ffffff',
+                                    appearance: 'none',
+                                    cursor: 'pointer',
+                                    color: selectedJobId ? '#1e293b' : '#94a3b8'
+                                }}
+                                onFocus={(e) => {
+                                    e.currentTarget.style.borderColor = '#2563eb';
+                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                                }}
+                                onBlur={(e) => {
+                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <option value="">-- Select a job to manage --</option>
+                                {ongoingJobs.map((job) => (
+                                    <option key={job.job_id} value={job.job_id}>
+                                        {job.role} - {job.location}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown style={{ 
+                                position: 'absolute', 
+                                right: '12px', 
+                                top: '50%', 
+                                transform: 'translateY(-50%)', 
+                                width: '20px', 
+                                height: '20px', 
+                                color: '#64748b', 
+                                pointerEvents: 'none' 
+                            }} />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            title="Refresh job list and applicants"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '10px 16px',
+                                borderRadius: '8px',
+                                fontSize: '13px',
                                 fontWeight: '500',
-                                outline: 'none',
+                                color: '#334155',
+                                background: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                cursor: refreshing ? 'wait' : 'pointer',
                                 transition: 'all 0.15s ease',
-                                background: '#ffffff',
-                                appearance: 'none',
-                                cursor: 'pointer',
-                                color: selectedJobId ? '#1e293b' : '#94a3b8'
+                                flexShrink: 0
                             }}
-                            onFocus={(e) => {
-                                e.currentTarget.style.borderColor = '#2563eb';
-                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                            onMouseEnter={(e) => {
+                                if (!refreshing) e.currentTarget.style.background = '#e2e8f0';
                             }}
-                            onBlur={(e) => {
-                                e.currentTarget.style.borderColor = '#cbd5e1';
-                                e.currentTarget.style.boxShadow = 'none';
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = '#f1f5f9';
                             }}
                         >
-                            <option value="">-- Select a job to manage --</option>
-                            {ongoingJobs.map((job) => (
-                                <option key={job.job_id} value={job.job_id}>
-                                    {job.role} - {job.location}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown style={{ 
-                            position: 'absolute', 
-                            right: '12px', 
-                            top: '50%', 
-                            transform: 'translateY(-50%)', 
-                            width: '20px', 
-                            height: '20px', 
-                            color: '#64748b', 
-                            pointerEvents: 'none' 
-                        }} />
+                            <RefreshCw
+                                style={{
+                                    width: '16px',
+                                    height: '16px',
+                                    flexShrink: 0,
+                                    animation: refreshing ? 'spin 1s linear infinite' : undefined
+                                }}
+                            />
+                            Refresh
+                        </button>
                     </div>
                     {ongoingJobs.length === 0 && (
                         <p style={{ fontSize: '12px', color: '#64748b', margin: '8px 0 0 0', fontStyle: 'italic' }}>
@@ -1501,7 +1547,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -1623,24 +1669,39 @@ export function ManageJobs() {
                                                                             border: '1px solid #e2e8f0',
                                                                             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
                                                                         }}>
-                                                                            <p style={{ margin: '0 0 4px 0', color: '#1e293b' }}>
-                                                                                <span style={{ fontWeight: '600', color: '#2563eb' }}>Round:</span> {round.round}
-                                                                            </p>
-                                                                            {round.interviewer_name && (
-                                                                                <p style={{ margin: '4px 0', color: '#475569' }}>
-                                                                                    <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name}
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                                                                <p style={{ margin: 0, color: '#1e293b' }}>
+                                                                                    <span style={{ fontWeight: '600', color: '#2563eb' }}>Round:</span> {round.round}
                                                                                 </p>
+                                                                                {round.type === 'ai_interview' && (
+                                                                                    <span style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: '700' }}>🤖 AI</span>
+                                                                                )}
+                                                                            </div>
+                                                                            {round.type === 'ai_interview' ? (
+                                                                                <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                                                    <button
+                                                                                        onClick={async () => {
+                                                                                            if (!round.feedback_id) return;
+                                                                                            try {
+                                                                                                const token = localStorage.getItem('access_token');
+                                                                                                if (!token) return;
+                                                                                                const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
+                                                                                                if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); }
+                                                                                            } catch { alert('Error loading transcript.'); }
+                                                                                        }}
+                                                                                        style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '6px', fontSize: '10px', fontWeight: '600', cursor: 'pointer' }}
+                                                                                    >📝 View Transcript</button>
+                                                                                    {round.recording_path && (
+                                                                                        <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>
+                                                                                    )}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    {round.interviewer_name && <p style={{ margin: '4px 0', color: '#475569' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name}</p>}
+                                                                                </>
                                                                             )}
-                                                                            {round.interview_date && (
-                                                                                <p style={{ margin: '4px 0', color: '#475569' }}>
-                                                                                    <span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}
-                                                                                </p>
-                                                                            )}
-                                                                            {round.interview_time && (
-                                                                                <p style={{ margin: '4px 0', color: '#475569' }}>
-                                                                                    <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
-                                                                                </p>
-                                                                            )}
+                                                                            {round.interview_date && <p style={{ margin: '4px 0', color: '#475569' }}><span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}</p>}
+                                                                            {round.interview_time && <p style={{ margin: '4px 0', color: '#475569' }}><span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}</p>}
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -1729,7 +1790,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -1956,7 +2017,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -2215,24 +2276,24 @@ export function ManageJobs() {
                                                                                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
                                                                                 marginBottom: '8px'
                                                                             }}>
-                                                                                <p style={{ fontWeight: '700', color: '#1e293b', margin: '0 0 8px 0', fontSize: '13px' }}>
-                                                                                    <span style={{ color: '#64748b' }}>Round:</span> {round.round}
-                                                                                </p>
-                                                                                {round.interviewer_name && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name}
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                                                                    <p style={{ fontWeight: '700', color: '#1e293b', margin: 0, fontSize: '13px' }}>
+                                                                                        <span style={{ color: '#64748b' }}>Round:</span> {round.round}
                                                                                     </p>
+                                                                                    {round.type === 'ai_interview' && (
+                                                                                        <span style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700' }}>🤖 AI Interview</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                {round.type === 'ai_interview' ? (
+                                                                                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                                        <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
+                                                                                        {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name}</p>
                                                                                 )}
-                                                                                {round.interview_date && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}
-                                                                                    </p>
-                                                                                )}
-                                                                                {round.interview_time && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
-                                                                                    </p>
-                                                                                )}
+                                                                                {round.interview_date && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}</p>}
+                                                                                {round.interview_time && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}</p>}
                                                                             </div>
                                                                         ))}
                                                                     </div>
@@ -2264,12 +2325,14 @@ export function ManageJobs() {
                                                     showScheduleForm={showScheduleForm === applicant.email}
                                                     onOpenScheduleForm={(email) => {
                                                         setShowScheduleForm(email);
+                                                        setScheduleFormError(null);
                                                         setSelectedRound('');
                                                         setSelectedTeam('');
                                                         fetchTeams();
                                                     }}
                                                     onCloseScheduleForm={() => {
                                                         setShowScheduleForm(null);
+                                                        setScheduleFormError(null);
                                                         setSelectedRound('');
                                                         setSelectedTeam('');
                                                         setSelectedLocationType('');
@@ -2398,7 +2461,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -2673,33 +2736,29 @@ export function ManageJobs() {
                                                                                 fontSize: '12px',
                                                                                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                                                                             }}>
-                                                                                <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 6px 0' }}>
-                                                                                    <span style={{ color: '#64748b' }}>Round:</span> {round.round}
-                                                                                </p>
-                                                                                {round.interviewer_name && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                                                    <p style={{ fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                                                                                        <span style={{ color: '#64748b' }}>Round:</span> {round.round}
                                                                                     </p>
+                                                                                    {round.type === 'ai_interview' && (
+                                                                                        <span style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700' }}>🤖 AI Interview</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                {round.type === 'ai_interview' ? (
+                                                                                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                                        <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
+                                                                                        {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})</p>
                                                                                 )}
-                                                                                {round.interview_date && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}
-                                                                                    </p>
-                                                                                )}
-                                                                                {round.interview_time && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
-                                                                                    </p>
-                                                                                )}
-                                                                                {round.candidate_attended && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
-                                                                                    </p>
-                                                                                )}
-                                                                                {round.interview_outcome && (
-                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                        <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
-                                                                                    </p>
+                                                                                {round.interview_date && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}</p>}
+                                                                                {round.interview_time && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}</p>}
+                                                                                {(!round.type || round.type !== 'ai_interview') && (
+                                                                                    <>
+                                                                                        {round.candidate_attended && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}</p>}
+                                                                                        {round.interview_outcome && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}</p>}
+                                                                                    </>
                                                                                 )}
                                                                                 {round.scores && (
                                                                                     <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
@@ -3160,7 +3219,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -3267,13 +3326,99 @@ export function ManageJobs() {
                                                                         fontSize: '12px',
                                                                         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                                                                     }}>
-                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 6px 0' }}>
-                                                                            <span style={{ color: '#64748b' }}>Round:</span> {round.round}
-                                                                        </p>
-                                                                        {round.interviewer_name && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                                            <p style={{ fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                                                                                <span style={{ color: '#64748b' }}>Round:</span> {round.round}
                                                                             </p>
+                                                                            {round.type === 'ai_interview' && (
+                                                                                <span style={{
+                                                                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                                                    color: 'white',
+                                                                                    padding: '4px 8px',
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '10px',
+                                                                                    fontWeight: '700',
+                                                                                    display: 'inline-flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '4px'
+                                                                                }}>
+                                                                                    🤖 AI Interview
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                        {round.type === 'ai_interview' ? (
+                                                                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                                <button
+                                                                                    onClick={async () => {
+                                                                                        const feedbackId = round.feedback_id;
+                                                                                        if (!feedbackId) return;
+                                                                                        try {
+                                                                                            const token = localStorage.getItem('access_token');
+                                                                                            if (!token) { alert('Please log in again'); return; }
+                                                                                            const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${feedbackId}`, {
+                                                                                                method: 'GET',
+                                                                                                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                                                                                            });
+                                                                                            if (res && res.ok) {
+                                                                                                const data = await res.json();
+                                                                                                (window as any).openTranscriptModal(data);
+                                                                                            } else {
+                                                                                                alert('Failed to load transcript.');
+                                                                                            }
+                                                                                        } catch (err) {
+                                                                                            alert('Error loading transcript.');
+                                                                                        }
+                                                                                    }}
+                                                                                    style={{
+                                                                                        padding: '8px 12px',
+                                                                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                                                                        color: 'white',
+                                                                                        border: 'none',
+                                                                                        borderRadius: '8px',
+                                                                                        fontSize: '11px',
+                                                                                        fontWeight: '600',
+                                                                                        cursor: 'pointer',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center',
+                                                                                        justifyContent: 'center',
+                                                                                        gap: '6px'
+                                                                                    }}
+                                                                                >
+                                                                                    📝 View Transcript
+                                                                                </button>
+                                                                                {round.recording_path && (
+                                                                                    <a
+                                                                                        href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        style={{
+                                                                                            padding: '8px 12px',
+                                                                                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                                                            color: 'white',
+                                                                                            border: 'none',
+                                                                                            borderRadius: '8px',
+                                                                                            fontSize: '11px',
+                                                                                            fontWeight: '600',
+                                                                                            cursor: 'pointer',
+                                                                                            display: 'flex',
+                                                                                            alignItems: 'center',
+                                                                                            justifyContent: 'center',
+                                                                                            gap: '6px',
+                                                                                            textDecoration: 'none'
+                                                                                        }}
+                                                                                    >
+                                                                                        🎥 Download Recording
+                                                                                    </a>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                {round.interviewer_name && (
+                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
+                                                                                        <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
+                                                                                    </p>
+                                                                                )}
+                                                                            </>
                                                                         )}
                                                                         {round.interview_date && (
                                                                             <p style={{ color: '#475569', margin: '4px 0' }}>
@@ -3285,16 +3430,20 @@ export function ManageJobs() {
                                                                                 <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
                                                                             </p>
                                                                         )}
-                                                                        {round.candidate_attended && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.interview_outcome && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
-                                                                            </p>
-                                                                        )}
+                                                                        {!round.type || round.type !== 'ai_interview' ? (
+                                                                            <>
+                                                                                {round.candidate_attended && (
+                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
+                                                                                        <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
+                                                                                    </p>
+                                                                                )}
+                                                                                {round.interview_outcome && (
+                                                                                    <p style={{ color: '#475569', margin: '4px 0' }}>
+                                                                                        <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
+                                                                                    </p>
+                                                                                )}
+                                                                            </>
+                                                                        ) : null}
                                                                         {round.scores && (
                                                                             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
                                                                                 <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0', fontSize: '12px' }}>📊 Scores:</p>
@@ -3482,7 +3631,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -3589,33 +3738,29 @@ export function ManageJobs() {
                                                                         fontSize: '12px',
                                                                         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                                                                     }}>
-                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 6px 0' }}>
-                                                                            <span style={{ color: '#64748b' }}>Round:</span> {round.round}
-                                                                        </p>
-                                                                        {round.interviewer_name && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                                            <p style={{ fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                                                                                <span style={{ color: '#64748b' }}>Round:</span> {round.round}
                                                                             </p>
+                                                                            {round.type === 'ai_interview' && (
+                                                                                <span style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700' }}>🤖 AI Interview</span>
+                                                                            )}
+                                                                        </div>
+                                                                        {round.type === 'ai_interview' ? (
+                                                                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                                <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
+                                                                                {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                            </div>
+                                                                        ) : (
+                                                                            round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})</p>
                                                                         )}
-                                                                        {round.interview_date && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.interview_time && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.candidate_attended && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.interview_outcome && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
-                                                                            </p>
+                                                                        {round.interview_date && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}</p>}
+                                                                        {round.interview_time && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}</p>}
+                                                                        {(!round.type || round.type !== 'ai_interview') && (
+                                                                            <>
+                                                                                {round.candidate_attended && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}</p>}
+                                                                                {round.interview_outcome && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}</p>}
+                                                                            </>
                                                                         )}
                                                                         {round.scores && (
                                                                             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
@@ -3804,7 +3949,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -3911,33 +4056,29 @@ export function ManageJobs() {
                                                                         fontSize: '12px',
                                                                         boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                                                                     }}>
-                                                                        <p style={{ fontWeight: '600', color: '#1e293b', margin: '0 0 6px 0' }}>
-                                                                            <span style={{ color: '#64748b' }}>Round:</span> {round.round}
-                                                                        </p>
-                                                                        {round.interviewer_name && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                                            <p style={{ fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                                                                                <span style={{ color: '#64748b' }}>Round:</span> {round.round}
                                                                             </p>
+                                                                            {round.type === 'ai_interview' && (
+                                                                                <span style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700' }}>🤖 AI Interview</span>
+                                                                            )}
+                                                                        </div>
+                                                                        {round.type === 'ai_interview' ? (
+                                                                            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                                <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
+                                                                                {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                            </div>
+                                                                        ) : (
+                                                                            round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})</p>
                                                                         )}
-                                                                        {round.interview_date && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.interview_time && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.candidate_attended && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}
-                                                                            </p>
-                                                                        )}
-                                                                        {round.interview_outcome && (
-                                                                            <p style={{ color: '#475569', margin: '4px 0' }}>
-                                                                                <span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}
-                                                                            </p>
+                                                                        {round.interview_date && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Date:</span> {round.interview_date}</p>}
+                                                                        {round.interview_time && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Time:</span> {round.interview_time}</p>}
+                                                                        {(!round.type || round.type !== 'ai_interview') && (
+                                                                            <>
+                                                                                {round.candidate_attended && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Attended:</span> {round.candidate_attended}</p>}
+                                                                                {round.interview_outcome && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Outcome:</span> {round.interview_outcome}</p>}
+                                                                            </>
                                                                         )}
                                                                         {round.scores && (
                                                                             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
@@ -4058,6 +4199,7 @@ export function ManageJobs() {
                 onClick={(e) => {
                     if (e.target === e.currentTarget) {
                         setShowScheduleForm(null);
+                        setScheduleFormError(null);
                         setSelectedRound('');
                         setSelectedTeam('');
                         setSelectedLocationType('');
@@ -4108,6 +4250,7 @@ export function ManageJobs() {
                             <button
                                 onClick={() => {
                                     setShowScheduleForm(null);
+                                    setScheduleFormError(null);
                                     setSelectedRound('');
                                     setSelectedTeam('');
                                     setSelectedLocationType('');
@@ -4156,7 +4299,14 @@ export function ManageJobs() {
                                     <div style={{ position: 'relative' }}>
                                         <select
                                             value={selectedRound}
-                                            onChange={(e) => setSelectedRound(e.target.value)}
+                                            onChange={(e) => {
+                                                const newRound = e.target.value;
+                                                setSelectedRound(newRound);
+                                                // When switching to a non–Initial Screening round, clear AI interview so Team/Location dropdowns show
+                                                if (newRound !== 'Initial Screening Round') {
+                                                    setIsAIInterview(false);
+                                                }
+                                            }}
                                             style={{
                                                 width: '100%',
                                                 padding: '12px 14px',
@@ -4406,11 +4556,50 @@ export function ManageJobs() {
                                 </div>
                                 )}
 
+                                {/* Inline error - same modal, above buttons */}
+                                {scheduleFormError && (
+                                    <div style={{
+                                        margin: '0 24px',
+                                        marginTop: '16px',
+                                        padding: '14px 18px',
+                                        background: 'linear-gradient(to right, #fee2e2, #fecaca)',
+                                        border: '1px solid #fca5a5',
+                                        borderRadius: '12px',
+                                        color: '#991b1b',
+                                        fontSize: '14px',
+                                        fontWeight: '500',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px'
+                                    }}>
+                                        <X style={{ width: '18px', height: '18px', flexShrink: 0, marginTop: '1px' }} />
+                                        <span style={{ flex: 1 }}>{scheduleFormError}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setScheduleFormError(null)}
+                                            style={{
+                                                padding: '2px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#991b1b',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}
+                                            aria-label="Dismiss"
+                                        >
+                                            <X style={{ width: '16px', height: '16px' }} />
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Action Buttons */}
                                 <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                                     <button
                                         onClick={() => {
                                             setShowScheduleForm(null);
+                                            setScheduleFormError(null);
                                             setSelectedRound('');
                                             setSelectedTeam('');
                                             setSelectedLocationType('');
@@ -4995,7 +5184,7 @@ const ApplicantCard = ({
                                 <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                     <a 
-                                        href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`} 
+                                        href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                         target="_blank" 
                                         rel="noopener noreferrer" 
                                         style={{
@@ -5369,8 +5558,9 @@ const ApplicantCard = ({
                                         </button>
                                         {round.recording_path && (
                                             <a
-                                                href={`${API_BASE_URL}${round.recording_path}`}
-                                                download
+                                                href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
                                                 style={{
                                                     padding: '8px 12px',
                                                     background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
@@ -5633,7 +5823,7 @@ const ApplicantCard = ({
             {/* Resume Link */}
             {(applicant.resume_url || applicant.profile?.resume_url) && (
                 <a
-                    href={`${API_BASE_URL}${applicant.resume_url || applicant.profile?.resume_url}`}
+                    href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"

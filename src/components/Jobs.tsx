@@ -146,7 +146,7 @@ const JobCard = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText style={{ width: '16px', height: '16px', color: '#64748b' }} />
                     <a
-                        href={`${API_ENDPOINTS.JOBS.replace('/api/jobs', '')}${job.file_path}`}
+                        href={job.file_path?.startsWith('http') ? job.file_path : `${API_ENDPOINTS.JOBS.replace('/api/jobs', '')}${job.file_path}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ 
