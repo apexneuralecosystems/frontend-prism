@@ -2,6 +2,16 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prism.backend.apexneural.cloud';
 
 /**
+ * Check if URL is an S3 URL (direct object or website format).
+ */
+function isS3Url(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.trim();
+  if (!u.startsWith('http')) return false;
+  return (u.includes('s3') && u.includes('amazonaws.com')) || false;
+}
+
+/**
  * Ensures storage URLs (S3, etc.) use HTTPS to avoid mixed-content blocking on production.
  * Converts legacy HTTP s3-website URLs to HTTPS s3 object URLs.
  */
@@ -17,10 +27,15 @@ export function ensureHttpsForStorageUrl(url: string | null | undefined): string
 
 /**
  * Returns the full URL for a storage path (S3 URL or relative path).
+ * For S3 URLs, uses backend /api/serve-file proxy (presigned URLs) to avoid AccessDenied on private buckets.
  */
 export function getStorageUrl(pathOrUrl: string | null | undefined): string {
   if (!pathOrUrl || typeof pathOrUrl !== 'string') return pathOrUrl || '';
   const u = pathOrUrl.trim();
+  if (u.startsWith('http') && isS3Url(u)) {
+    const normalized = ensureHttpsForStorageUrl(u);
+    return `${API_BASE_URL}/api/serve-file?url=${encodeURIComponent(normalized)}`;
+  }
   if (u.startsWith('http')) return ensureHttpsForStorageUrl(u);
   const base = u.startsWith('/') ? '' : '/';
   return `${API_BASE_URL}${base}${u}`;
@@ -59,6 +74,7 @@ export const API_ENDPOINTS = {
   JOBS_APPLIED: `${API_BASE_URL}/api/jobs/applied`,
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,
   UPLOAD: `${API_BASE_URL}/api/upload`,
+  SERVE_FILE: `${API_BASE_URL}/api/serve-file`,
   PARSE_RESUME: `${API_BASE_URL}/api/parse-resume`,
   BUY_CREDITS: `${API_BASE_URL}/api/payments/buy-credits`,
   CAPTURE_ORDER: `${API_BASE_URL}/api/payments/capture-order`,
