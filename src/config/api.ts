@@ -1,41 +1,50 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prism.backend.apexneural.cloud';
 
+/** S3 bucket region - must match prism-bucket-10 (ap-south-2) */
+const S3_REGION = 'ap-south-2';
+
 /**
- * Check if URL is an S3 URL (direct object or website format).
+ * Parse S3 URL to get bucket and key.
  */
-function isS3Url(url: string): boolean {
-  if (!url || typeof url !== 'string') return false;
-  const u = url.trim();
-  if (!u.startsWith('http')) return false;
-  return (u.includes('s3') && u.includes('amazonaws.com')) || false;
+function parseS3Url(url: string): { bucket: string; key: string } | null {
+  if (!url || !url.includes('amazonaws.com')) return null;
+  try {
+    const afterProto = url.split('://')[1] || '';
+    const host = afterProto.split('/')[0] || '';
+    const path = afterProto.includes('/') ? afterProto.split('/').slice(1).join('/') : '';
+    if (path && (host.includes('.s3-website.') || host.includes('.s3.'))) {
+      const bucket = host.includes('.s3-website.') ? host.split('.s3-website.')[0] : host.split('.s3.')[0];
+      return { bucket, key: path };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 /**
- * Ensures storage URLs (S3, etc.) use HTTPS to avoid mixed-content blocking on production.
- * Converts legacy HTTP s3-website URLs to HTTPS s3 object URLs.
+ * Convert any S3 URL to Object URL format: https://bucket.s3.ap-south-2.amazonaws.com/key
+ * Uses ap-south-2 explicitly everywhere.
  */
 export function ensureHttpsForStorageUrl(url: string | null | undefined): string {
   if (!url || typeof url !== 'string') return url || '';
   const u = url.trim();
-  // Convert http://bucket.s3-website.region.amazonaws.com/key -> https://bucket.s3.region.amazonaws.com/key
-  if (u.startsWith('http://') && u.includes('.s3-website.') && u.includes('amazonaws.com')) {
-    return u.replace('http://', 'https://').replace('.s3-website.', '.s3.');
+  if (!u.startsWith('http') || !u.includes('amazonaws.com')) return u;
+  const parsed = parseS3Url(u);
+  if (parsed) {
+    return `https://${parsed.bucket}.s3.${S3_REGION}.amazonaws.com/${parsed.key}`;
   }
-  return u;
+  return u.startsWith('http://') ? u.replace('http://', 'https://') : u;
 }
 
 /**
- * Returns the full URL for a storage path (S3 URL or relative path).
- * For S3 URLs, uses backend /api/serve-file proxy (presigned URLs) to avoid AccessDenied on private buckets.
+ * Returns the storage URL. S3 URLs are normalized to Object URL format (HTTPS, ap-south-2).
+ * Relative paths use API_BASE_URL.
  */
 export function getStorageUrl(pathOrUrl: string | null | undefined): string {
   if (!pathOrUrl || typeof pathOrUrl !== 'string') return pathOrUrl || '';
   const u = pathOrUrl.trim();
-  if (u.startsWith('http') && isS3Url(u)) {
-    const normalized = ensureHttpsForStorageUrl(u);
-    return `${API_BASE_URL}/api/serve-file?url=${encodeURIComponent(normalized)}`;
-  }
   if (u.startsWith('http')) return ensureHttpsForStorageUrl(u);
   const base = u.startsWith('/') ? '' : '/';
   return `${API_BASE_URL}${base}${u}`;
@@ -74,7 +83,6 @@ export const API_ENDPOINTS = {
   JOBS_APPLIED: `${API_BASE_URL}/api/jobs/applied`,
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,
   UPLOAD: `${API_BASE_URL}/api/upload`,
-  SERVE_FILE: `${API_BASE_URL}/api/serve-file`,
   PARSE_RESUME: `${API_BASE_URL}/api/parse-resume`,
   BUY_CREDITS: `${API_BASE_URL}/api/payments/buy-credits`,
   CAPTURE_ORDER: `${API_BASE_URL}/api/payments/capture-order`,
