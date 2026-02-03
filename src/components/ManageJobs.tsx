@@ -15,6 +15,7 @@ interface Job {
         name: string;
         email: string;
     };
+    jobStatus?: 'open' | 'ongoing';
 }
 
 interface Applicant {
@@ -209,20 +210,16 @@ export function ManageJobs() {
 
     const fetchOngoingJobs = async () => {
         try {
-            const res = await authenticatedFetch(
-                API_ENDPOINTS.ORGANIZATION_JOBPOST_ONGOING,
-                { method: 'GET' },
-                navigate
-            );
+            const [openRes, ongoingRes] = await Promise.all([
+                authenticatedFetch(API_ENDPOINTS.ORGANIZATION_JOBPOST, { method: 'GET' }, navigate),
+                authenticatedFetch(API_ENDPOINTS.ORGANIZATION_JOBPOST_ONGOING, { method: 'GET' }, navigate)
+            ]);
 
-            if (!res) return;
-
-            if (res.ok) {
-                const result = await res.json();
-                setOngoingJobs(result.jobs || []);
-            }
+            const openJobs: Job[] = (openRes?.ok ? ((await openRes.json()).jobs || []) : []).map((j: Job) => ({ ...j, jobStatus: 'open' as const }));
+            const ongoingJobsList: Job[] = (ongoingRes?.ok ? ((await ongoingRes.json()).jobs || []) : []).map((j: Job) => ({ ...j, jobStatus: 'ongoing' as const }));
+            setOngoingJobs([...openJobs, ...ongoingJobsList]);
         } catch (err) {
-            console.error('Failed to fetch ongoing jobs:', err);
+            console.error('Failed to fetch jobs:', err);
         } finally {
             setLoading(false);
         }
@@ -1032,7 +1029,7 @@ export function ManageJobs() {
                                 <option value="">-- Select a job to manage --</option>
                                 {ongoingJobs.map((job) => (
                                     <option key={job.job_id} value={job.job_id}>
-                                        {job.role} - {job.location}
+                                        {job.role} - {job.location} [{job.jobStatus === 'open' ? 'Open' : 'Ongoing'}]
                                     </option>
                                 ))}
                             </select>
@@ -1087,7 +1084,7 @@ export function ManageJobs() {
                     </div>
                     {ongoingJobs.length === 0 && (
                         <p style={{ fontSize: '12px', color: '#64748b', margin: '8px 0 0 0', fontStyle: 'italic' }}>
-                            No ongoing jobs available. Jobs will appear here once they pass their application deadline.
+                            No jobs available. Post a job from Organization Job Post to get started.
                         </p>
                     )}
                 </div>
@@ -4168,12 +4165,12 @@ export function ManageJobs() {
                             <Briefcase style={{ width: '64px', height: '64px', color: '#3b82f6' }} />
                         </div>
                         <h3 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>
-                            {ongoingJobs.length === 0 ? 'No ongoing jobs' : 'Select a job to manage applicants'}
+                            {ongoingJobs.length === 0 ? 'No jobs to manage' : 'Select a job to manage applicants'}
                         </h3>
                         <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>
                             {ongoingJobs.length === 0 
-                                ? 'You don\'t have any ongoing jobs to manage.' 
-                                : 'Please select a job from the dropdown above.'}
+                                ? 'Post a job from Organization Job Post, then manage applicants here.' 
+                                : 'Select an open or ongoing job from the dropdown above.'}
                         </p>
                     </div>
                 )}
