@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect, refreshAccessToken } from '../utils/auth';
-import { API_ENDPOINTS, API_BASE_URL } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL, getStorageUrl } from '../config/api';
 
 interface Job {
     job_id: string;
@@ -1547,7 +1547,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -1692,7 +1692,7 @@ export function ManageJobs() {
                                                                                         style={{ padding: '6px 10px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '6px', fontSize: '10px', fontWeight: '600', cursor: 'pointer' }}
                                                                                     >📝 View Transcript</button>
                                                                                     {round.recording_path && (
-                                                                                        <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>
+                                                                                        <a href={getStorageUrl(round.recording_path)} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>
                                                                                     )}
                                                                                 </div>
                                                                             ) : (
@@ -1790,7 +1790,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -2017,7 +2017,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -2287,7 +2287,7 @@ export function ManageJobs() {
                                                                                 {round.type === 'ai_interview' ? (
                                                                                     <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                                                         <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
-                                                                                        {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                                        {round.recording_path && <a href={getStorageUrl(round.recording_path)} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
                                                                                     </div>
                                                                                 ) : (
                                                                                     round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name}</p>
@@ -2461,7 +2461,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -2747,7 +2747,7 @@ export function ManageJobs() {
                                                                                 {round.type === 'ai_interview' ? (
                                                                                     <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                                                         <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
-                                                                                        {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                                        {round.recording_path && <a href={getStorageUrl(round.recording_path)} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
                                                                                     </div>
                                                                                 ) : (
                                                                                     round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})</p>
@@ -3219,7 +3219,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -3388,7 +3388,7 @@ export function ManageJobs() {
                                                                                 </button>
                                                                                 {round.recording_path && (
                                                                                     <a
-                                                                                        href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`}
+                                                                                        href={getStorageUrl(round.recording_path)}
                                                                                         target="_blank"
                                                                                         rel="noopener noreferrer"
                                                                                         style={{
@@ -3631,7 +3631,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -3749,7 +3749,7 @@ export function ManageJobs() {
                                                                         {round.type === 'ai_interview' ? (
                                                                             <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                                                 <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
-                                                                                {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                                {round.recording_path && <a href={getStorageUrl(round.recording_path)} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
                                                                             </div>
                                                                         ) : (
                                                                             round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})</p>
@@ -3949,7 +3949,7 @@ export function ManageJobs() {
                                                                         <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                                                             <a 
-                                                                                href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                                                                href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                                                                 target="_blank" 
                                                                                 rel="noopener noreferrer" 
                                                                                 style={{
@@ -4067,7 +4067,7 @@ export function ManageJobs() {
                                                                         {round.type === 'ai_interview' ? (
                                                                             <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                                                 <button onClick={async () => { if (!round.feedback_id) return; try { const token = localStorage.getItem('access_token'); if (!token) return; const res = await fetch(`${API_BASE_URL}/api/interview-feedback/${round.feedback_id}`, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }); if (res?.ok) { const data = await res.json(); (window as any).openTranscriptModal(data); } else { alert('Failed to load transcript.'); } } catch { alert('Error loading transcript.'); } }} style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>📝 View Transcript</button>
-                                                                                {round.recording_path && <a href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
+                                                                                {round.recording_path && <a href={getStorageUrl(round.recording_path)} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>🎥 Download Recording</a>}
                                                                             </div>
                                                                         ) : (
                                                                             round.interviewer_name && <p style={{ color: '#475569', margin: '4px 0' }}><span style={{ fontWeight: '600' }}>Interviewer:</span> {round.interviewer_name} ({round.interviewer_email})</p>
@@ -5184,7 +5184,7 @@ const ApplicantCard = ({
                                 <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span style={{ fontWeight: '600', color: '#475569' }}>📄 Resume:</span>
                                     <a 
-                                        href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')} 
+                                        href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')} 
                                         target="_blank" 
                                         rel="noopener noreferrer" 
                                         style={{
@@ -5558,7 +5558,7 @@ const ApplicantCard = ({
                                         </button>
                                         {round.recording_path && (
                                             <a
-                                                href={round.recording_path.startsWith('http') ? round.recording_path : `${API_BASE_URL}${round.recording_path.startsWith('/') ? '' : '/'}${round.recording_path}`}
+                                                href={getStorageUrl(round.recording_path)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{
@@ -5823,7 +5823,7 @@ const ApplicantCard = ({
             {/* Resume Link */}
             {(applicant.resume_url || applicant.profile?.resume_url) && (
                 <a
-                    href={((u: string) => u?.startsWith('http') ? u : `${API_BASE_URL}${u}`)(applicant.resume_url || applicant.profile?.resume_url || '')}
+                    href={getStorageUrl(applicant.resume_url || applicant.profile?.resume_url || '')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"

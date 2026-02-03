@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, UserCheck, FileText, Mail, User, Calendar } from 'lucide-react';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, getStorageUrl } from '../config/api';
 
 export function ReviewForm() {
     const [searchParams] = useSearchParams();
@@ -177,7 +177,7 @@ export function ReviewForm() {
                                 <div style={{ flex: 1 }}>
                                     <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8', fontWeight: '500' }}>Resume</p>
                                     <a 
-                                        href={reviewData.resume_url?.startsWith('http') ? reviewData.resume_url : `${API_BASE_URL}${reviewData.resume_url}`} 
+                                        href={getStorageUrl(reviewData.resume_url)} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
                                         style={{ 

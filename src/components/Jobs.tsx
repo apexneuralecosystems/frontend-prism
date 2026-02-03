@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, getStorageUrl } from '../config/api';
 
 // --- Types ---
 
@@ -146,7 +146,7 @@ const JobCard = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText style={{ width: '16px', height: '16px', color: '#64748b' }} />
                     <a
-                        href={job.file_path?.startsWith('http') ? job.file_path : `${API_ENDPOINTS.JOBS.replace('/api/jobs', '')}${job.file_path}`}
+                        href={getStorageUrl(job.file_path)}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ 

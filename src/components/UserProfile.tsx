@@ -6,7 +6,7 @@ import {
     Briefcase, GraduationCap, Award, Globe, Github, Linkedin, FileText, LogOut, User, Menu, UserCircle
 } from 'lucide-react';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
-import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
+import { API_BASE_URL, API_ENDPOINTS, getStorageUrl } from '../config/api';
 
 // --- Types ---
 
@@ -469,7 +469,7 @@ export function UserProfile() {
                         }}>
                             {data.profilePhotoUrl ? (
                                 <img 
-                                    src={data.profilePhotoUrl.startsWith('http') ? data.profilePhotoUrl : `${API_BASE_URL}${data.profilePhotoUrl}`}
+                                    src={getStorageUrl(data.profilePhotoUrl)}
                                     alt="Profile" 
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }}
                                 />
@@ -534,7 +534,7 @@ export function UserProfile() {
                     }}>
                         {data.profilePhotoUrl ? (
                             <img 
-                                src={data.profilePhotoUrl.startsWith('http') ? data.profilePhotoUrl : `${API_BASE_URL}${data.profilePhotoUrl}`} 
+                                src={getStorageUrl(data.profilePhotoUrl)} 
                                 alt="Profile" 
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
@@ -1633,7 +1633,7 @@ export function UserProfile() {
                         <p className="font-semibold text-gray-900 text-base">{data.resumeName || "No Resume Uploaded"}</p>
                         {data.resumeUrl && (
                             <a
-                                href={data.resumeUrl?.startsWith('http') ? data.resumeUrl : `${API_BASE_URL}${data.resumeUrl}`}
+                                href={getStorageUrl(data.resumeUrl)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-sm text-blue-600 font-medium hover:underline mt-1 inline-block"

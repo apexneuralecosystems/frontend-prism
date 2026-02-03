@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
-import { API_ENDPOINTS, API_BASE_URL } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL, getStorageUrl } from '../config/api';
 
 // --- Types ---
 
@@ -212,7 +212,7 @@ const JobCard = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText style={{ width: '16px', height: '16px', color: '#64748b' }} />
                     <a
-                        href={job.file_path?.startsWith('http') ? job.file_path : `${API_ENDPOINTS.ORGANIZATION_JOBPOST.replace('/api/organization-jobpost', '')}${job.file_path}`}
+                        href={getStorageUrl(job.file_path)}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ 
@@ -272,10 +272,7 @@ const JobCard = ({
 
 // --- Applicants Modal Component ---
 
-const buildFileUrl = (path: string | undefined): string => {
-    if (!path) return '';
-    return path.startsWith('http') ? path : `${API_BASE_URL}${path.startsWith('/') ? '' : '/'}${path}`;
-};
+const buildFileUrl = (path: string | undefined): string => getStorageUrl(path);
 
 const ApplicantsModal = ({
     job,
@@ -494,7 +491,7 @@ const ApplicantsModal = ({
                                                                             View Transcript
                                                                         </button>
                                                                         {r.recording_path && (
-                                                                            <a href={r.recording_path.startsWith('http') ? r.recording_path : `${API_BASE_URL}${r.recording_path.startsWith('/') ? '' : '/'}${r.recording_path}`} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                                                            <a href={getStorageUrl(r.recording_path)} target="_blank" rel="noopener noreferrer" style={{ padding: '8px 12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', borderRadius: '8px', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                                                                                 Download Recording
                                                                             </a>
                                                                         )}

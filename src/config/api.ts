@@ -1,5 +1,30 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://prism.backend.apexneural.cloud';
+
+/**
+ * Ensures storage URLs (S3, etc.) use HTTPS to avoid mixed-content blocking on production.
+ * Converts legacy HTTP s3-website URLs to HTTPS s3 object URLs.
+ */
+export function ensureHttpsForStorageUrl(url: string | null | undefined): string {
+  if (!url || typeof url !== 'string') return url || '';
+  const u = url.trim();
+  // Convert http://bucket.s3-website.region.amazonaws.com/key -> https://bucket.s3.region.amazonaws.com/key
+  if (u.startsWith('http://') && u.includes('.s3-website.') && u.includes('amazonaws.com')) {
+    return u.replace('http://', 'https://').replace('.s3-website.', '.s3.');
+  }
+  return u;
+}
+
+/**
+ * Returns the full URL for a storage path (S3 URL or relative path).
+ */
+export function getStorageUrl(pathOrUrl: string | null | undefined): string {
+  if (!pathOrUrl || typeof pathOrUrl !== 'string') return pathOrUrl || '';
+  const u = pathOrUrl.trim();
+  if (u.startsWith('http')) return ensureHttpsForStorageUrl(u);
+  const base = u.startsWith('/') ? '' : '/';
+  return `${API_BASE_URL}${base}${u}`;
+}
 export const API_ENDPOINTS = {
   DEMO_REQUEST: `${API_BASE_URL}/api/demo-request`,
   HEALTH: `${API_BASE_URL}/health`,

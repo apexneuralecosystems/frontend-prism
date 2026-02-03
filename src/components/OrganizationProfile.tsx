@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
-import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
+import { API_BASE_URL, API_ENDPOINTS, getStorageUrl } from '../config/api';
 
 // --- Types ---
 
@@ -989,7 +989,7 @@ export function OrganizationProfile() {
                         }}>
                             {data.logoUrl ? (
                                 <img 
-                                    src={data.logoUrl.startsWith('http') ? data.logoUrl : `${API_BASE_URL}${data.logoUrl}`} 
+                                    src={getStorageUrl(data.logoUrl)} 
                                     alt="Logo" 
                                     style={{
                                         width: '100%',
@@ -1220,7 +1220,7 @@ export function OrganizationProfile() {
                     }}>
                         {data.logoUrl ? (
                             <img 
-                                src={data.logoUrl.startsWith('http') ? data.logoUrl : `${API_BASE_URL}${data.logoUrl}`} 
+                                src={getStorageUrl(data.logoUrl)} 
                                 alt="Logo" 
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
