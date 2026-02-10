@@ -37,6 +37,8 @@ export function AIInterview() {
     const audioQueueRef = useRef<Float32Array[]>([]);
     const isPlayingRef = useRef<boolean>(false);
     const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+    /** True when user clicked End Interview — avoid showing "Connection closed unexpectedly" in onclose */
+    const intentionalEndRef = useRef<boolean>(false);
 
     useEffect(() => {
         if (!jobId || !email) {
@@ -256,7 +258,7 @@ export function AIInterview() {
 
                 ws.onclose = () => {
                     console.log('🔌 WebSocket closed');
-                    if (status !== 'ending' && status !== 'complete') {
+                    if (!intentionalEndRef.current) {
                         setError('Connection closed unexpectedly');
                         setStatus('error');
                     }
@@ -455,7 +457,28 @@ export function AIInterview() {
 
     const endInterview = async () => {
         try {
+            intentionalEndRef.current = true;
             setStatus('ending');
+
+            // 1. End voice agent first: stop AI audio and close WebSocket
+            if (currentSourceRef.current) {
+                try {
+                    currentSourceRef.current.stop();
+                    currentSourceRef.current = null;
+                } catch (_e) { /* already stopped */ }
+            }
+            audioQueueRef.current = [];
+            isPlayingRef.current = false;
+
+            if (wsRef.current) {
+                try {
+                    wsRef.current.send(JSON.stringify({ event: 'end_session' }));
+                } catch (_e) { /* socket may already be closing */ }
+                wsRef.current.close();
+                wsRef.current = null;
+            }
+
+            // 2. Then stop camera and handle recording
             if (cameraStreamRef.current) {
                 cameraStreamRef.current.getTracks().forEach((t) => t.stop());
                 cameraStreamRef.current = null;
@@ -469,11 +492,6 @@ export function AIInterview() {
 
                 // Upload recording
                 await uploadRecording();
-            }
-
-            // Close WebSocket
-            if (wsRef.current) {
-                wsRef.current.close();
             }
 
             // Mark interview as complete

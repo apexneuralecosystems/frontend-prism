@@ -4823,6 +4823,33 @@ export function ManageJobs() {
                             </button>
                         </div>
 
+                        {/* LLM Evaluation (score + suggestion) */}
+                        {selectedTranscript.llm_evaluation && (
+                            <div style={{
+                                padding: '16px 24px',
+                                background: 'linear-gradient(to right, #f0fdf4, #dcfce7)',
+                                borderBottom: '1px solid #bbf7d0',
+                                margin: 0
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#166534' }}>Panel evaluation</span>
+                                    <span style={{
+                                        padding: '4px 12px',
+                                        borderRadius: '999px',
+                                        background: selectedTranscript.llm_evaluation.score >= 70 ? '#22c55e' : selectedTranscript.llm_evaluation.score >= 50 ? '#eab308' : '#ef4444',
+                                        color: '#fff',
+                                        fontSize: '15px',
+                                        fontWeight: 700
+                                    }}>
+                                        Score: {selectedTranscript.llm_evaluation.score}/100
+                                    </span>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '13px', color: '#14532d', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                    {selectedTranscript.llm_evaluation.suggestion}
+                                </p>
+                            </div>
+                        )}
+
                         {/* Transcript Content */}
                         <div style={{
                             flex: 1,
@@ -5043,7 +5070,7 @@ const ApplicantCard = ({
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '12px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ fontWeight: '600', color: '#6b21a8', fontSize: '15px', margin: '0 0 4px 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {applicant.name || 'N/A'}
+                            {applicant.name || 'Info not given'}
                         </h3>
                         <p style={{ fontSize: '12px', color: '#7e22ce', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {applicant.email}
@@ -5684,7 +5711,7 @@ const ApplicantCard = ({
         }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ flex: 1 }}>
-                    <h3 style={{ fontWeight: '600', color: '#1e293b', fontSize: '16px', margin: 0 }}>{applicant.name || 'N/A'}</h3>
+                    <h3 style={{ fontWeight: '600', color: '#1e293b', fontSize: '16px', margin: 0 }}>{applicant.name || 'Info not given'}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                         <Mail style={{ width: '14px', height: '14px', color: '#64748b' }} />
                         <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>{applicant.email}</p>

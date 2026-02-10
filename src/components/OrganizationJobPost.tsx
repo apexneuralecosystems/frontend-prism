@@ -21,13 +21,23 @@ interface JobPost {
     location: string;
     number_of_openings: number;
     application_close_date: string;
-    job_package_lpa: number;
+    job_package_lpa?: number;
+    job_package_lpa_min?: number;
+    job_package_lpa_max?: number;
     job_type: string;
     notes: string;
     applied_candidates: any[];
     offer_accepted_count?: number;
     created_at: string;
     closed_at?: string;
+}
+
+function formatPackageLpa(job: JobPost): string {
+    const min = job.job_package_lpa_min ?? job.job_package_lpa;
+    const max = job.job_package_lpa_max ?? job.job_package_lpa;
+    if (min != null && max != null && min !== max) return `${min} - ${max} LPA`;
+    if (min != null) return `${min} LPA`;
+    return 'Info not given';
 }
 
 // --- Helper Components ---
@@ -99,70 +109,36 @@ const JobCard = ({
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
                         <p style={{ color: '#64748b', margin: 0, fontSize: '14px', fontWeight: '500' }}>{job.company.name}</p>
-                        {status === 'closed' ? (
-                            // For closed jobs, show offer_accepted count
-                            job.offer_accepted_count !== undefined && job.offer_accepted_count > 0 && onViewApplicants && (
-                                <button
-                                    onClick={() => onViewApplicants(job, 'offer_accepted')}
-                                    style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '4px', 
-                                        fontSize: '12px', 
-                                        color: '#2563eb',
-                                        background: '#dbeafe',
-                                        padding: '4px 8px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        fontWeight: '500',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = '#2563eb';
-                                        e.currentTarget.style.color = '#ffffff';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = '#dbeafe';
-                                        e.currentTarget.style.color = '#2563eb';
-                                    }}
-                                >
-                                    <Eye style={{ width: '12px', height: '12px' }} />
-                                    {job.offer_accepted_count} offer accepted{job.offer_accepted_count !== 1 ? 's' : ''}
-                                </button>
-                            )
-                        ) : (
-                            // For open/ongoing jobs, show total applicants
-                            job.applied_candidates && job.applied_candidates.length > 0 && onViewApplicants && (
-                                <button
-                                    onClick={() => onViewApplicants(job)}
-                                    style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '4px', 
-                                        fontSize: '12px', 
-                                        color: '#2563eb',
-                                        background: '#dbeafe',
-                                        padding: '4px 8px',
-                                        borderRadius: '6px',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        fontWeight: '500',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = '#2563eb';
-                                        e.currentTarget.style.color = '#ffffff';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = '#dbeafe';
-                                        e.currentTarget.style.color = '#2563eb';
-                                    }}
-                                >
-                                    <Eye style={{ width: '12px', height: '12px' }} />
-                                    {job.applied_candidates.length} applicant{job.applied_candidates.length !== 1 ? 's' : ''}
-                                </button>
-                            )
+                        {/* For all jobs (open, ongoing, closed), show total applicants if any */}
+                        {job.applied_candidates && job.applied_candidates.length > 0 && onViewApplicants && (
+                            <button
+                                onClick={() => onViewApplicants(job)}
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '4px', 
+                                    fontSize: '12px', 
+                                    color: '#2563eb',
+                                    background: '#dbeafe',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#2563eb';
+                                    e.currentTarget.style.color = '#ffffff';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#dbeafe';
+                                    e.currentTarget.style.color = '#2563eb';
+                                }}
+                            >
+                                <Eye style={{ width: '12px', height: '12px' }} />
+                                {job.applied_candidates.length} applicant{job.applied_candidates.length !== 1 ? 's' : ''}
+                            </button>
                         )}
                     </div>
                 </div>
@@ -198,7 +174,7 @@ const JobCard = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <DollarSign style={{ width: '16px', height: '16px', color: '#64748b' }} />
-                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '600' }}>{job.job_package_lpa} LPA</span>
+                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '600' }}>{formatPackageLpa(job)}</span>
                 </div>
             </div>
 
@@ -287,20 +263,44 @@ const ApplicantsModal = ({
     filterStatus?: string | null;
     getApplicantsForJob?: (jobId: string) => Promise<{ applicants: any[] }>;
 }) => {
+    const [fullApplicants, setFullApplicants] = useState<any[]>([]);
     const [offerAcceptedApplicants, setOfferAcceptedApplicants] = useState<any[]>([]);
     const [loadingOfferAccepted, setLoadingOfferAccepted] = useState(false);
     const [selectedApplicantForDetails, setSelectedApplicantForDetails] = useState<any | null>(null);
     const [expandedRoundsDetail, setExpandedRoundsDetail] = useState<Set<string>>(new Set());
     const [transcriptModal, setTranscriptModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
+    const [activeTab, setActiveTab] = useState<'all' | 'in_rounds' | 'selected'>('all');
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        // Always show times in IST (Asia/Kolkata)
+        try {
+            return new Date(dateString).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        } catch {
+            return dateString;
+        }
+    };
+
+    const formatStatus = (status?: string) => {
+        if (!status) return 'Unknown';
+        const map: Record<string, string> = {
+            applied: 'Applied',
+            selected_for_interview: 'Selected for interview',
+            processing: 'In process',
+            invitation_sent: 'Interview invited',
+            decision_pending: 'Decision pending',
+            decision_pending_review: 'In review',
+            offer_sent: 'Offer sent',
+            offer_accepted: 'Offer accepted',
+            rejected: 'Rejected',
+        };
+        return map[status] || status.replace(/_/g, ' ');
     };
 
     // Reset expanded rounds when switching to a different applicant
@@ -312,35 +312,66 @@ const ApplicantsModal = ({
     useEffect(() => {
         if (!isOpen) {
             setSelectedApplicantForDetails(null);
+            setFullApplicants([]);
             setOfferAcceptedApplicants([]);
             setExpandedRoundsDetail(new Set());
             setTranscriptModal({ show: false, data: null });
+            setActiveTab('all');
             return;
         }
-        if (isOpen && job && filterStatus === 'offer_accepted' && getApplicantsForJob) {
+        if (isOpen && job && getApplicantsForJob) {
             setSelectedApplicantForDetails(null);
             setLoadingOfferAccepted(true);
             getApplicantsForJob(job.job_id)
                 .then(({ applicants }) => {
-                    const accepted = (applicants || []).filter((a: any) => a.status === 'offer_accepted');
+                    const list = applicants || [];
+                    setFullApplicants(list);
+                    const accepted = list.filter((a: any) => a.status === 'offer_accepted');
                     setOfferAcceptedApplicants(accepted);
                 })
-                .catch(() => setOfferAcceptedApplicants([]))
+                .catch(() => {
+                    setFullApplicants([]);
+                    setOfferAcceptedApplicants([]);
+                })
                 .finally(() => setLoadingOfferAccepted(false));
         }
-    }, [isOpen, job?.job_id, filterStatus, getApplicantsForJob]);
+    }, [isOpen, job?.job_id, getApplicantsForJob]);
 
     if (!isOpen || !job) return null;
 
-    // For offer_accepted use fetched full list; otherwise use job.applied_candidates
-    const filteredCandidates = filterStatus === 'offer_accepted' && offerAcceptedApplicants.length >= 0
-        ? offerAcceptedApplicants
-        : (filterStatus
-            ? job.applied_candidates?.filter((c: any) => c.status === filterStatus) || []
-            : job.applied_candidates || []);
+    // Prefer full applicants list (with profile + rounds) when available; fallback to job.applied_candidates
+    let baseCandidates = fullApplicants.length > 0
+        ? fullApplicants
+        : (job.applied_candidates || []);
 
-    const displayTitle = filterStatus === 'offer_accepted' ? 'Candidates Who Accepted Offer' : 'All Applicants';
-    const isOfferAcceptedView = filterStatus === 'offer_accepted';
+    // Optional legacy filterStatus (for specific single-status views like offer_accepted)
+    if (filterStatus && !['in_rounds', 'selected'].includes(filterStatus)) {
+        baseCandidates = baseCandidates.filter((c: any) => c.status === filterStatus);
+    }
+
+    // Apply tab-based grouping
+    if (activeTab === 'in_rounds') {
+        const inRoundsStatuses = [
+            'selected_for_interview',
+            'processing',
+            'invitation_sent',
+            'decision_pending',
+            'decision_pending_review'
+        ];
+        baseCandidates = baseCandidates.filter((c: any) => inRoundsStatuses.includes(c.status));
+    } else if (activeTab === 'selected') {
+        const selectedStatuses = ['offer_accepted'];
+        baseCandidates = baseCandidates.filter((c: any) => selectedStatuses.includes(c.status));
+    }
+
+    // For offer_accepted we still rely on enriched list but filtered above
+    const filteredCandidates = baseCandidates;
+
+    const displayTitle = activeTab === 'in_rounds'
+        ? 'In Rounds'
+        : activeTab === 'selected'
+            ? 'Selected'
+            : 'All Applicants';
 
     return (
         <div style={{ 
@@ -376,10 +407,7 @@ const ApplicantsModal = ({
                         <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#ffffff', margin: 0 }}>{job.role}</h2>
                         <p style={{ color: 'rgba(255, 255, 255, 0.9)', margin: '4px 0 0 0', fontSize: '14px' }}>{job.company.name}</p>
                         <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.8)', margin: '4px 0 0 0' }}>
-                            {filterStatus 
-                                ? `${displayTitle}: ${filteredCandidates.length} candidate${filteredCandidates.length !== 1 ? 's' : ''}`
-                                : `${filteredCandidates.length} applicant${filteredCandidates.length !== 1 ? 's' : ''}`
-                            }
+                            {displayTitle}: {filteredCandidates.length} candidate{filteredCandidates.length !== 1 ? 's' : ''}
                         </p>
                     </div>
                     <button
@@ -400,6 +428,36 @@ const ApplicantsModal = ({
                     >
                         <X style={{ width: '20px', height: '20px', color: '#ffffff' }} />
                     </button>
+                </div>
+
+                {/* Tabs for grouping applicants by status */}
+                <div style={{ padding: '12px 24px 0 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {[
+                            { id: 'all', label: 'All' },
+                            { id: 'in_rounds', label: 'In Rounds' },
+                            { id: 'selected', label: 'Selected' },
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '999px',
+                                    border: `1px solid ${activeTab === tab.id ? '#6366f1' : '#e2e8f0'}`,
+                                    background: activeTab === tab.id ? 'rgba(99,102,241,0.08)' : '#ffffff',
+                                    color: activeTab === tab.id ? '#3730a3' : '#475569',
+                                    fontSize: '13px',
+                                    fontWeight: activeTab === tab.id ? 600 : 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 <div style={{ padding: '24px', overflowY: 'auto', maxHeight: '60vh' }}>
@@ -431,7 +489,45 @@ const ApplicantsModal = ({
                                 <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                     <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#1e293b' }}>{selectedApplicantForDetails.name || selectedApplicantForDetails.profile?.name}</h4>
                                     <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>{selectedApplicantForDetails.email}</p>
+                                    {selectedApplicantForDetails.status && (
+                                        <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#0f172a' }}>
+                                            <span style={{ fontWeight: 600 }}>Status:</span>{' '}
+                                            <span style={{ padding: '2px 8px', borderRadius: '999px', background: '#e0f2fe', color: '#0369a1' }}>
+                                                {formatStatus(selectedApplicantForDetails.status)}
+                                            </span>
+                                        </p>
+                                    )}
                                 </div>
+                                {/* Profile info from candidate profile (not from resume parser) */}
+                                {selectedApplicantForDetails.profile && (
+                                    <div style={{ padding: '16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Profile info</p>
+                                        {(() => {
+                                            const p = selectedApplicantForDetails.profile;
+                                            const fields: { label: string; value: any }[] = [
+                                                { label: 'Name', value: p.name },
+                                                { label: 'Email', value: p.email || selectedApplicantForDetails.email },
+                                                { label: 'Phone', value: p.phone },
+                                                { label: 'Location', value: p.location },
+                                                { label: 'Gender', value: p.gender },
+                                                { label: 'Date of Birth', value: p.dob },
+                                            ];
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', color: '#475569' }}>
+                                                    {fields.map((f) => {
+                                                        const hasValue = f.value && f.value !== 'info not available in resume';
+                                                        return (
+                                                            <p key={f.label} style={{ margin: 0 }}>
+                                                                <span style={{ fontWeight: 600 }}>{f.label}:</span>{' '}
+                                                                {hasValue ? f.value : 'Info not given'}
+                                                            </p>
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
                                 {(selectedApplicantForDetails.resume_url || selectedApplicantForDetails.profile?.resume_url) && (
                                     <div style={{ padding: '16px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                                         <p style={{ margin: '0 0 8px 0', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Resume</p>
@@ -564,17 +660,9 @@ const ApplicantsModal = ({
                                         </a>
                                     </div>
                                 )}
-                                {(selectedApplicantForDetails.offer_responded_at || selectedApplicantForDetails.updated_at) && (
-                                    <div style={{ padding: '16px', background: '#dcfce7', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-                                        <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>When they accepted</p>
-                                        <p style={{ margin: 0, fontSize: '14px', color: '#15803d' }}>
-                                            {formatDate(selectedApplicantForDetails.offer_responded_at || selectedApplicantForDetails.updated_at)}
-                                        </p>
-                                    </div>
-                                )}
                             </div>
                         </div>
-                    ) : loadingOfferAccepted && isOfferAcceptedView ? (
+                    ) : loadingOfferAccepted ? (
                         <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                             <div style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
                             <p style={{ color: '#64748b', fontSize: '14px' }}>Loading candidates...</p>
@@ -602,31 +690,36 @@ const ApplicantsModal = ({
                                         <div>
                                             <h4 style={{ fontWeight: '500', color: '#1e293b', margin: '0 0 4px 0', fontSize: '15px' }}>{candidate.name || candidate.profile?.name}</h4>
                                             <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{candidate.email}</p>
+                                            {candidate.status && (
+                                                <p style={{ fontSize: '12px', color: '#0f172a', margin: '4px 0 0 0' }}>
+                                                    <span style={{ fontWeight: 600 }}>Status:</span>{' '}
+                                                    <span style={{ padding: '2px 8px', borderRadius: '999px', background: '#e0f2fe', color: '#0369a1' }}>
+                                                        {formatStatus(candidate.status)}
+                                                    </span>
+                                                </p>
+                                            )}
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {isOfferAcceptedView ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSelectedApplicantForDetails(candidate)}
-                                                    style={{
-                                                        padding: '8px 14px',
-                                                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        borderRadius: '8px',
-                                                        fontSize: '13px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    More details
-                                                </button>
-                                            ) : (
-                                                candidate.applied_at && (
-                                                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, padding: '4px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                                        Applied on {formatDate(candidate.applied_at)}
-                                                    </p>
-                                                )
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedApplicantForDetails(candidate)}
+                                                style={{
+                                                    padding: '8px 14px',
+                                                    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    fontSize: '13px',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                More details
+                                            </button>
+                                            {candidate.applied_at && (
+                                                <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0, padding: '4px 8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                                    Applied on {formatDate(candidate.applied_at)}
+                                                </p>
                                             )}
                                         </div>
                                     </div>
@@ -672,6 +765,27 @@ const ApplicantsModal = ({
                                 <X style={{ width: '20px', height: '20px' }} />
                             </button>
                         </div>
+                        {/* LLM Evaluation (score + suggestion) */}
+                        {transcriptModal.data.llm_evaluation && (
+                            <div style={{ padding: '16px 20px', background: 'linear-gradient(to right, #f0fdf4, #dcfce7)', borderBottom: '1px solid #bbf7d0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#166534' }}>Panel evaluation</span>
+                                    <span style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '999px',
+                                        background: transcriptModal.data.llm_evaluation.score >= 70 ? '#22c55e' : transcriptModal.data.llm_evaluation.score >= 50 ? '#eab308' : '#ef4444',
+                                        color: '#fff',
+                                        fontSize: '14px',
+                                        fontWeight: 700
+                                    }}>
+                                        Score: {transcriptModal.data.llm_evaluation.score}/100
+                                    </span>
+                                </div>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#14532d', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                    {transcriptModal.data.llm_evaluation.suggestion}
+                                </p>
+                            </div>
+                        )}
                         <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
                             {transcriptModal.data.transcript && transcriptModal.data.transcript.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -724,7 +838,8 @@ export function OrganizationJobPost() {
         location: '',
         number_of_openings: 1,
         application_close_date: '',
-        job_package_lpa: 0,
+        job_package_lpa_min: 0,
+        job_package_lpa_max: 0,
         job_type: 'full_time',
         notes: '',
         jd_file: null as File | null
@@ -814,11 +929,11 @@ export function OrganizationJobPost() {
     };
 
     const handleInputChange = (field: string, value: any) => {
-        // If changing job type to unpaid, automatically set LPA to 0
+        // If changing job type to unpaid, automatically set LPA range to 0
         if (field === 'job_type' && value === 'unpaid') {
-            setFormData(prev => ({ ...prev, [field]: value, job_package_lpa: 0 }));
+            setFormData(prev => ({ ...prev, [field]: value, job_package_lpa_min: 0, job_package_lpa_max: 0 }));
         } else {
-        setFormData(prev => ({ ...prev, [field]: value }));
+            setFormData(prev => ({ ...prev, [field]: value }));
         }
     };
 
@@ -838,18 +953,20 @@ export function OrganizationJobPost() {
             setMessage({ type: 'error', text: 'Application close date is required' });
             return;
         }
-        // Validate LPA based on job type
+        // Validate LPA range based on job type
         if (formData.job_type === 'unpaid') {
-            // For unpaid jobs, LPA should be 0
-            if (formData.job_package_lpa !== 0) {
+            if (formData.job_package_lpa_min !== 0 || formData.job_package_lpa_max !== 0) {
                 setMessage({ type: 'error', text: 'Job package for unpaid positions must be 0' });
                 return;
             }
         } else {
-            // For full_time and internship, LPA must be greater than 0
-        if (formData.job_package_lpa <= 0) {
+            if (formData.job_package_lpa_min > formData.job_package_lpa_max) {
+                setMessage({ type: 'error', text: 'Min LPA cannot be greater than Max LPA' });
+                return;
+            }
+            if (formData.job_package_lpa_min < 0 || formData.job_package_lpa_max <= 0) {
                 setMessage({ type: 'error', text: 'Job package must be greater than 0 for paid positions' });
-            return;
+                return;
             }
         }
         if (!formData.jd_file) {
@@ -878,7 +995,8 @@ export function OrganizationJobPost() {
             formDataToSend.append('location', formData.location);
             formDataToSend.append('number_of_openings', formData.number_of_openings.toString());
             formDataToSend.append('application_close_date', formData.application_close_date);
-            formDataToSend.append('job_package_lpa', formData.job_package_lpa.toString());
+            formDataToSend.append('job_package_lpa_min', formData.job_package_lpa_min.toString());
+            formDataToSend.append('job_package_lpa_max', formData.job_package_lpa_max.toString());
             formDataToSend.append('job_type', formData.job_type);
             formDataToSend.append('notes', formData.notes);
             formDataToSend.append('jd_file', formData.jd_file);
@@ -918,7 +1036,8 @@ export function OrganizationJobPost() {
                     location: '',
                     number_of_openings: 1,
                     application_close_date: '',
-                    job_package_lpa: 0,
+                    job_package_lpa_min: 0,
+                    job_package_lpa_max: 0,
                     job_type: 'full_time',
                     notes: '',
                     jd_file: null
@@ -1730,47 +1849,86 @@ export function OrganizationJobPost() {
                                     />
                                 </div>
 
-                                {/* Job Package */}
-                                <div>
+                                {/* Job Package (Range) */}
+                                <div style={{ gridColumn: '1 / -1' }}>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>
                                         Job Package (LPA) * {formData.job_type === 'unpaid' && <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '400' }}>(Auto-set to 0 for unpaid)</span>}
                                     </label>
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        min="0"
-                                        value={formData.job_package_lpa}
-                                        onChange={(e) => handleInputChange('job_package_lpa', parseFloat(e.target.value) || 0)}
-                                        disabled={formData.job_type === 'unpaid'}
-                                        style={{ 
-                                            width: '100%', 
-                                            padding: '10px 14px', 
-                                            border: '1px solid #cbd5e1', 
-                                            borderRadius: '8px',
-                                            fontSize: '14px',
-                                            outline: 'none',
-                                            transition: 'all 0.15s ease',
-                                            boxSizing: 'border-box',
-                                            background: formData.job_type === 'unpaid' ? '#f1f5f9' : '#ffffff',
-                                            cursor: formData.job_type === 'unpaid' ? 'not-allowed' : 'text',
-                                            color: formData.job_type === 'unpaid' ? '#94a3b8' : '#1e293b'
-                                        }}
-                                        onFocus={(e) => {
-                                            if (formData.job_type !== 'unpaid') {
-                                                e.currentTarget.style.borderColor = '#2563eb';
-                                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-                                            }
-                                        }}
-                                        onBlur={(e) => {
-                                            e.currentTarget.style.borderColor = '#cbd5e1';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                        placeholder={formData.job_type === 'unpaid' ? '0 (Unpaid)' : 'e.g., 4.5'}
-                                        required
-                                    />
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Min LPA</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                value={formData.job_package_lpa_min}
+                                                onChange={(e) => handleInputChange('job_package_lpa_min', parseFloat(e.target.value) || 0)}
+                                                disabled={formData.job_type === 'unpaid'}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 14px',
+                                                    border: '1px solid #cbd5e1',
+                                                    borderRadius: '8px',
+                                                    fontSize: '14px',
+                                                    outline: 'none',
+                                                    transition: 'all 0.15s ease',
+                                                    boxSizing: 'border-box',
+                                                    background: formData.job_type === 'unpaid' ? '#f1f5f9' : '#ffffff',
+                                                    cursor: formData.job_type === 'unpaid' ? 'not-allowed' : 'text',
+                                                    color: formData.job_type === 'unpaid' ? '#94a3b8' : '#1e293b'
+                                                }}
+                                                onFocus={(e) => {
+                                                    if (formData.job_type !== 'unpaid') {
+                                                        e.currentTarget.style.borderColor = '#2563eb';
+                                                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }}
+                                                placeholder={formData.job_type === 'unpaid' ? '0' : 'e.g., 4'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Max LPA</label>
+                                            <input
+                                                type="number"
+                                                step="0.1"
+                                                min="0"
+                                                value={formData.job_package_lpa_max}
+                                                onChange={(e) => handleInputChange('job_package_lpa_max', parseFloat(e.target.value) || 0)}
+                                                disabled={formData.job_type === 'unpaid'}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 14px',
+                                                    border: '1px solid #cbd5e1',
+                                                    borderRadius: '8px',
+                                                    fontSize: '14px',
+                                                    outline: 'none',
+                                                    transition: 'all 0.15s ease',
+                                                    boxSizing: 'border-box',
+                                                    background: formData.job_type === 'unpaid' ? '#f1f5f9' : '#ffffff',
+                                                    cursor: formData.job_type === 'unpaid' ? 'not-allowed' : 'text',
+                                                    color: formData.job_type === 'unpaid' ? '#94a3b8' : '#1e293b'
+                                                }}
+                                                onFocus={(e) => {
+                                                    if (formData.job_type !== 'unpaid') {
+                                                        e.currentTarget.style.borderColor = '#2563eb';
+                                                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                                    e.currentTarget.style.boxShadow = 'none';
+                                                }}
+                                                placeholder={formData.job_type === 'unpaid' ? '0' : 'e.g., 8'}
+                                            />
+                                        </div>
+                                    </div>
                                     {formData.job_type !== 'unpaid' && (
                                         <p style={{ fontSize: '12px', color: '#64748b', margin: '6px 0 0 0' }}>
-                                            Enter the annual package for this position
+                                            Enter the annual package range (Min – Max LPA) for this position
                                         </p>
                                     )}
                                 </div>

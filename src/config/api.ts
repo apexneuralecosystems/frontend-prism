@@ -80,6 +80,7 @@ export const API_ENDPOINTS = {
   SUBMIT_OFFER_RESPONSE: `${API_BASE_URL}/api/submit-offer-response`,
   JOBS: `${API_BASE_URL}/api/jobs`,
   GET_JOB: (jobId: string) => `${API_BASE_URL}/api/jobs/${jobId}`,
+  PUBLIC_GET_JOB: (jobId: string) => `${API_BASE_URL}/api/public/jobs/${jobId}`,
   JOBS_APPLIED: `${API_BASE_URL}/api/jobs/applied`,
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,
   UPLOAD: `${API_BASE_URL}/api/upload`,

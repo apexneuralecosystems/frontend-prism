@@ -20,11 +20,21 @@ interface JobPost {
     location: string;
     number_of_openings: number;
     application_close_date: string;
-    job_package_lpa: number;
+    job_package_lpa?: number;
+    job_package_lpa_min?: number;
+    job_package_lpa_max?: number;
     job_type: string;
     notes: string;
     applied_candidates: any[];
     created_at: string;
+}
+
+function formatPackageLpa(job: JobPost): string {
+    const min = job.job_package_lpa_min ?? job.job_package_lpa;
+    const max = job.job_package_lpa_max ?? job.job_package_lpa;
+    if (min != null && max != null && min !== max) return `${min} - ${max} LPA`;
+    if (min != null) return `${min} LPA`;
+    return 'Info not given';
 }
 
 // --- Helper Components ---
@@ -132,7 +142,7 @@ const JobCard = ({
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <DollarSign style={{ width: '16px', height: '16px', color: '#64748b' }} />
-                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '600' }}>{job.job_package_lpa} LPA</span>
+                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '600' }}>{formatPackageLpa(job)}</span>
                 </div>
             </div>
 
@@ -279,24 +289,27 @@ export function Jobs() {
     const [menuHovered, setMenuHovered] = useState(false);
 
     useEffect(() => {
-        // Check authentication and user type
         const token = localStorage.getItem('access_token');
         const storedUserData = localStorage.getItem('user');
 
         if (!token) {
-            navigate('/');
+            navigate('/auth', { state: { message: 'Sign in to see applied jobs' } });
             return;
         }
 
         if (storedUserData) {
-            const parsedUser = JSON.parse(storedUserData);
-            if (parsedUser.user_type !== 'user') {
-                navigate('/');
+            try {
+                const parsedUser = JSON.parse(storedUserData);
+                if (parsedUser.user_type === 'organization') {
+                    navigate('/organization-jobpost');
+                    return;
+                }
+            } catch {
+                navigate('/auth', { state: { message: 'Sign in to see applied jobs' } });
                 return;
             }
         }
 
-        // Fetch jobs data
         fetchAllJobs();
     }, [navigate]);
 

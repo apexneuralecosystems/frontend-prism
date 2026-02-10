@@ -489,7 +489,7 @@ export function UserProfile() {
                             <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
                                 <MapPin style={{ width: '16px', height: '16px' }} /> Location
                             </p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.location || "Not specified"}</p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.location || "Info not given"}</p>
                         </div>
                         <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                             <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
@@ -501,15 +501,15 @@ export function UserProfile() {
                             <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
                                 <Phone style={{ width: '16px', height: '16px' }} /> Phone
                             </p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.phone || "Not specified"}</p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.phone || "Info not given"}</p>
                         </div>
                         <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                             <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', fontWeight: '500' }}>Gender</p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.gender || "Not specified"}</p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.gender || "Info not given"}</p>
                         </div>
                         <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                             <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', fontWeight: '500' }}>Date of Birth</p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.dob || "Not specified"}</p>
+                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.dob || "Info not given"}</p>
                         </div>
                     </div>
                 </div>

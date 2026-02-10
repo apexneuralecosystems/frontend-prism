@@ -15,11 +15,21 @@ interface JobPost {
     location: string;
     number_of_openings: number;
     application_close_date: string;
-    job_package_lpa: number;
+    job_package_lpa?: number;
+    job_package_lpa_min?: number;
+    job_package_lpa_max?: number;
     job_type: string;
     notes: string;
     created_at: string;
     job_status?: 'open' | 'ongoing' | 'closed';
+}
+
+function formatPackageLpa(job: JobPost): string {
+    const min = job.job_package_lpa_min ?? job.job_package_lpa;
+    const max = job.job_package_lpa_max ?? job.job_package_lpa;
+    if (min != null && max != null && min !== max) return `${min} - ${max} LPA`;
+    if (min != null) return `${min} LPA`;
+    return 'Info not given';
 }
 
 export function JobDetail() {
@@ -37,21 +47,26 @@ export function JobDetail() {
     const [processing, setProcessing] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [applied, setApplied] = useState(false);
+    const [viewerType, setViewerType] = useState<'guest' | 'user' | 'organization'>('guest');
+    const [showUnauthApplyModal, setShowUnauthApplyModal] = useState(false);
+    const [countdown, setCountdown] = useState(10);
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
         const storedUser = localStorage.getItem('user');
         if (!token) {
-            navigate('/');
-            return;
-        }
-        if (storedUser) {
-            const parsed = JSON.parse(storedUser);
-            if (parsed.user_type !== 'user') {
-                navigate('/');
-                return;
+            setViewerType('guest');
+            setUserData(null);
+        } else if (storedUser) {
+            try {
+                const parsed = JSON.parse(storedUser);
+                setUserData(parsed);
+                setViewerType(parsed.user_type === 'organization' ? 'organization' : parsed.user_type === 'user' ? 'user' : 'guest');
+            } catch {
+                setViewerType('guest');
             }
-            setUserData(parsed);
+        } else {
+            setViewerType('guest');
         }
         if (!jobId) {
             setError('Invalid job');
@@ -60,15 +75,9 @@ export function JobDetail() {
         }
         const fetchJob = async () => {
             try {
-                const res = await authenticatedFetch(
-                    API_ENDPOINTS.GET_JOB(jobId),
-                    { method: 'GET' },
-                    navigate
-                );
-                if (res === null) {
-                    setLoading(false);
-                    return;
-                }
+                // Always load job from public endpoint so auth issues never show "Job not found"
+                const publicUrl = API_ENDPOINTS.PUBLIC_GET_JOB(jobId);
+                const res = await fetch(publicUrl);
                 if (!res.ok) {
                     if (res.status === 404) setError('Job not found');
                     else setError('Failed to load job');
@@ -76,9 +85,32 @@ export function JobDetail() {
                     return;
                 }
                 const data = await res.json();
-                setJob(data.job || null);
-                if (data.user_has_applied === true) setApplied(true);
-                if (!data.job) setError('Job not found');
+                const jobData = data.job || null;
+                setJob(jobData);
+                if (!jobData) {
+                    setError('Job not found');
+                    setLoading(false);
+                    return;
+                }
+                // If authenticated candidate, get user_has_applied from protected endpoint
+                if (token && storedUser) {
+                    try {
+                        const parsed = JSON.parse(storedUser);
+                        if (parsed.user_type === 'user') {
+                            const authRes = await authenticatedFetch(
+                                API_ENDPOINTS.GET_JOB(jobId),
+                                { method: 'GET' },
+                                navigate
+                            );
+                            if (authRes?.ok) {
+                                const authData = await authRes.json();
+                                if (authData.user_has_applied === true) setApplied(true);
+                            }
+                        }
+                    } catch {
+                        // ignore; we already have the job
+                    }
+                }
             } catch (err) {
                 console.error(err);
                 setError('Failed to load job');
@@ -88,6 +120,23 @@ export function JobDetail() {
         };
         fetchJob();
     }, [jobId, navigate]);
+
+    // Countdown and redirect when unauthenticated user clicks Apply
+    useEffect(() => {
+        if (!showUnauthApplyModal) return;
+        setCountdown(10);
+        const t = setInterval(() => {
+            setCountdown((c) => {
+                if (c <= 1) {
+                    clearInterval(t);
+                    navigate('/auth');
+                    return 0;
+                }
+                return c - 1;
+            });
+        }, 1000);
+        return () => clearInterval(t);
+    }, [showUnauthApplyModal, navigate]);
 
     const handleApply = async (additionalDetails?: string) => {
         if (!jobId || !userData || processing) return;
@@ -274,7 +323,7 @@ export function JobDetail() {
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <DollarSign style={{ width: '18px', height: '18px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '15px', color: '#475569', fontWeight: '600' }}>{job.job_package_lpa} LPA</span>
+                                    <span style={{ fontSize: '15px', color: '#475569', fontWeight: '600' }}>{formatPackageLpa(job)}</span>
                                 </div>
                             </div>
                             <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '16px', marginBottom: 0 }}>Posted {formatDate(job.created_at)}</p>
@@ -305,9 +354,11 @@ export function JobDetail() {
                             </div>
                         )}
 
-                        {/* Apply at end */}
+                        {/* Apply at end: hide for org; guest = popup + 10s redirect; candidate = normal */}
                         <div style={{ padding: '24px' }}>
-                            {applied ? (
+                            {viewerType === 'organization' ? (
+                                null
+                            ) : applied ? (
                                 <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', color: '#166534', fontWeight: '500' }}>
                                     Job applied.
                                 </div>
@@ -315,6 +366,17 @@ export function JobDetail() {
                                 <div style={{ padding: '16px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d', color: '#92400e', fontWeight: '500' }}>
                                     Applications are closed for this position.
                                 </div>
+                            ) : viewerType === 'guest' ? (
+                                <button
+                                    onClick={() => { setShowUnauthApplyModal(true); }}
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '8px', border: 'none',
+                                        background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)', color: '#fff', fontWeight: '600', fontSize: '16px', cursor: 'pointer',
+                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                    }}
+                                >
+                                    <UserCheck style={{ width: '20px', height: '20px' }} /> Apply for this job
+                                </button>
                             ) : (
                                 <button
                                     onClick={() => { setFormError(null); setShowApplyForm(true); }}
@@ -332,6 +394,26 @@ export function JobDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Unauthenticated Apply modal: create profile + 10s redirect to signup */}
+            {showUnauthApplyModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: 'min(420px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                        <p style={{ margin: '0 0 16px 0', fontSize: '15px', color: '#334155', lineHeight: 1.6 }}>
+                            Create a profile, upload your resume, and then come back here to apply again.
+                        </p>
+                        <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>
+                            Redirecting you to sign up in <strong>{countdown}</strong> second{countdown !== 1 ? 's' : ''}...
+                        </p>
+                        <button
+                            onClick={() => { setShowUnauthApplyModal(false); navigate('/auth'); }}
+                            style={{ marginTop: '16px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: '500' }}
+                        >
+                            Go to Sign up now
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {showApplyForm && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>

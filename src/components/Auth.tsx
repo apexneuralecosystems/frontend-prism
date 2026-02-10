@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowRight, Mail, Lock, User, Key, Loader2, Check, X } from "lucide-react";
 import { API_ENDPOINTS } from "../config/api";
 
@@ -15,6 +15,8 @@ interface PasswordValidation {
 
 export function Auth() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const redirectMessage = (location.state as { message?: string } | null)?.message;
     const [authState, setAuthState] = useState<AuthState>("signin");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -284,6 +286,20 @@ export function Auth() {
                 width: "100%",
                 maxWidth: "440px"
             }}>
+                {redirectMessage && (
+                    <div style={{
+                        marginBottom: "20px",
+                        padding: "12px 16px",
+                        borderRadius: "8px",
+                        background: "#eff6ff",
+                        border: "1px solid #bfdbfe",
+                        color: "#1e40af",
+                        fontSize: "14px",
+                        textAlign: "center"
+                    }}>
+                        {redirectMessage}
+                    </div>
+                )}
                 <div style={{
                     display: "flex",
                     justifyContent: "center",
