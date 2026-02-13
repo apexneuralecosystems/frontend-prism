@@ -983,406 +983,175 @@ export function ManageJobs() {
                 </div>
             )}
 
-            {/* Content */}
-            <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 24px' }}>
-                {/* Job Selection Dropdown */}
-                <div style={{ 
-                    background: '#ffffff', 
-                    borderRadius: '12px', 
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)', 
+            {/* Content: left fixed sidebar + main */}
+            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px 24px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                {/* Left sidebar - sticky, dropdown + status nav top to bottom */}
+                <aside style={{
+                    width: '280px',
+                    flexShrink: 0,
+                    position: 'sticky',
+                    top: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '16px',
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
                     border: '1px solid #e2e8f0',
-                    padding: '24px',
-                    marginBottom: '24px'
+                    padding: '20px',
+                    alignSelf: 'flex-start'
                 }}>
-                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
                         <Briefcase style={{ width: '16px', height: '16px', display: 'inline', marginRight: '8px', verticalAlign: 'text-bottom', color: '#2563eb' }} />
                         Select Ongoing Job
                     </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ position: 'relative', flex: 1 }}>
-                            <select
-                                value={selectedJobId}
-                                onChange={(e) => handleJobSelect(e.target.value)}
-                                style={{ 
-                                    width: '100%', 
-                                    padding: '12px 40px 12px 16px', 
-                                    border: '1px solid #cbd5e1', 
-                                    borderRadius: '10px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    outline: 'none',
-                                    transition: 'all 0.15s ease',
-                                    background: '#ffffff',
-                                    appearance: 'none',
-                                    cursor: 'pointer',
-                                    color: selectedJobId ? '#1e293b' : '#94a3b8'
-                                }}
-                                onFocus={(e) => {
-                                    e.currentTarget.style.borderColor = '#2563eb';
-                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
-                                }}
-                                onBlur={(e) => {
-                                    e.currentTarget.style.borderColor = '#cbd5e1';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <option value="">-- Select a job to manage --</option>
-                                {ongoingJobs.map((job) => (
-                                    <option key={job.job_id} value={job.job_id}>
-                                        {job.role} - {job.location} [{job.jobStatus === 'open' ? 'Open' : 'Ongoing'}]
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown style={{ 
-                                position: 'absolute', 
-                                right: '12px', 
-                                top: '50%', 
-                                transform: 'translateY(-50%)', 
-                                width: '20px', 
-                                height: '20px', 
-                                color: '#64748b', 
-                                pointerEvents: 'none' 
-                            }} />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={handleRefresh}
-                            disabled={refreshing}
-                            title="Refresh job list and applicants"
+                    <div style={{ position: 'relative' }}>
+                        <select
+                            value={selectedJobId}
+                            onChange={(e) => handleJobSelect(e.target.value)}
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '10px 16px',
-                                borderRadius: '8px',
-                                fontSize: '13px',
+                                width: '100%',
+                                padding: '12px 40px 12px 16px',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '10px',
+                                fontSize: '14px',
                                 fontWeight: '500',
-                                color: '#334155',
-                                background: '#f1f5f9',
-                                border: '1px solid #e2e8f0',
-                                cursor: refreshing ? 'wait' : 'pointer',
+                                outline: 'none',
                                 transition: 'all 0.15s ease',
-                                flexShrink: 0
+                                background: '#ffffff',
+                                appearance: 'none',
+                                cursor: 'pointer',
+                                color: selectedJobId ? '#1e293b' : '#94a3b8'
                             }}
-                            onMouseEnter={(e) => {
-                                if (!refreshing) e.currentTarget.style.background = '#e2e8f0';
+                            onFocus={(e) => {
+                                e.currentTarget.style.borderColor = '#2563eb';
+                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
                             }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
+                            onBlur={(e) => {
+                                e.currentTarget.style.borderColor = '#cbd5e1';
+                                e.currentTarget.style.boxShadow = 'none';
                             }}
                         >
-                            <RefreshCw
-                                style={{
-                                    width: '16px',
-                                    height: '16px',
-                                    flexShrink: 0,
-                                    animation: refreshing ? 'spin 1s linear infinite' : undefined
-                                }}
-                            />
-                            Refresh
-                        </button>
+                            <option value="">-- Select a job to manage --</option>
+                            {ongoingJobs.map((job) => (
+                                <option key={job.job_id} value={job.job_id}>
+                                    {job.role} - {job.location} [{job.jobStatus === 'open' ? 'Open' : 'Ongoing'}]
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown style={{
+                            position: 'absolute',
+                            right: '12px',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            width: '20px',
+                            height: '20px',
+                            color: '#64748b',
+                            pointerEvents: 'none'
+                        }} />
                     </div>
+                    <button
+                        type="button"
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                        title="Refresh job list and applicants"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '10px 16px',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            color: '#334155',
+                            background: '#f1f5f9',
+                            border: '1px solid #e2e8f0',
+                            cursor: refreshing ? 'wait' : 'pointer',
+                            transition: 'all 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!refreshing) e.currentTarget.style.background = '#e2e8f0';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#f1f5f9';
+                        }}
+                    >
+                        <RefreshCw style={{ width: '16px', height: '16px', animation: refreshing ? 'spin 1s linear infinite' : undefined }} />
+                        Refresh
+                    </button>
                     {ongoingJobs.length === 0 && (
-                        <p style={{ fontSize: '12px', color: '#64748b', margin: '8px 0 0 0', fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0', fontStyle: 'italic' }}>
                             No jobs available. Post a job from Organization Job Post to get started.
                         </p>
                     )}
-                </div>
+                    {selectedJobId && (
+                        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginTop: '4px' }}>
+                            {[
+                                { tab: 'pending' as const, label: 'Decision Pending', count: decisionPending.length, Icon: Clock, activeBg: 'linear-gradient(to bottom, #fef9c3, #fef08a)', activeColor: '#a16207', activeBorder: '#eab308' },
+                                { tab: 'decision_review' as const, label: 'Decision Review', count: decisionReview.length, Icon: Clock, activeBg: 'linear-gradient(to bottom, #fef3c7, #fde68a)', activeColor: '#b45309', activeBorder: '#facc15' },
+                                { tab: 'conduct_rounds' as const, label: 'Conduct Rounds', count: conductRounds.length, Icon: UserCheck, activeBg: 'linear-gradient(to bottom, #f3e8ff, #e9d5ff)', activeColor: '#7e22ce', activeBorder: '#a855f7' },
+                                { tab: 'invitation_sent' as const, label: 'Invitation Sent', count: invitationSent.length, Icon: Calendar, activeBg: 'linear-gradient(to bottom, #fed7aa, #fdba74)', activeColor: '#c2410c', activeBorder: '#f97316' },
+                                { tab: 'ongoing' as const, label: 'Ongoing Rounds', count: ongoingRounds.length, Icon: UserCheck, activeBg: 'linear-gradient(to bottom, #dbeafe, #bfdbfe)', activeColor: '#1e40af', activeBorder: '#3b82f6' },
+                                { tab: 'selected' as const, label: 'Selected', count: selected.length, Icon: CheckCircle, activeBg: 'linear-gradient(to bottom, #dcfce7, #bbf7d0)', activeColor: '#15803d', activeBorder: '#22c55e' },
+                                { tab: 'offer_sent' as const, label: 'Offer Sent', count: offerSent.length, Icon: Mail, activeBg: 'linear-gradient(to bottom, #fed7aa, #fdba74)', activeColor: '#c2410c', activeBorder: '#f97316' },
+                                { tab: 'offer_accepted' as const, label: 'Offer Accepted', count: offerAccepted.length, Icon: CheckCircle, activeBg: 'linear-gradient(to bottom, #dcfce7, #bbf7d0)', activeColor: '#15803d', activeBorder: '#22c55e' }
+                            ].map(({ tab, label, count, Icon, activeBg, activeColor, activeBorder }) => {
+                                const isActive = activeTab === tab;
+                                return (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        onClick={() => setActiveTab(tab)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px 14px',
+                                            fontSize: '13px',
+                                            fontWeight: '600',
+                                            transition: 'all 0.15s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            border: 'none',
+                                            borderLeft: isActive ? `4px solid ${activeBorder}` : '4px solid transparent',
+                                            background: isActive ? activeBg : 'transparent',
+                                            color: isActive ? activeColor : '#64748b',
+                                            cursor: 'pointer',
+                                            borderRadius: '8px',
+                                            textAlign: 'left'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!isActive) {
+                                                e.currentTarget.style.background = '#f8fafc';
+                                                e.currentTarget.style.color = '#475569';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isActive) {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.color = '#64748b';
+                                            }
+                                        }}
+                                    >
+                                        <Icon style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+                                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label} ({count})</span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    )}
+                </aside>
 
+                {/* Main content */}
+                <main style={{ flex: 1, minWidth: 0 }}>
                 {selectedJobId ? (
-                    <>
-                        {/* Tabs */}
-                        <div style={{ 
-                            background: '#ffffff', 
-                            borderRadius: '12px', 
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)', 
-                            border: '1px solid #e2e8f0',
-                            overflow: 'hidden'
-                        }}>
-                            <div style={{ display: 'flex', borderBottom: '2px solid #e2e8f0', overflowX: 'auto', flexWrap: 'nowrap' }}>
-                                <button
-                                    onClick={() => setActiveTab('pending')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '160px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'pending' ? '3px solid #eab308' : '3px solid transparent',
-                                        background: activeTab === 'pending' ? 'linear-gradient(to bottom, #fef9c3, #fef08a)' : 'transparent',
-                                        color: activeTab === 'pending' ? '#a16207' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'pending') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'pending') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <Clock style={{ width: '16px', height: '16px' }} />
-                                    <span>Decision Pending ({decisionPending.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('decision_review')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '160px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'decision_review' ? '3px solid #facc15' : '3px solid transparent',
-                                        background: activeTab === 'decision_review' ? 'linear-gradient(to bottom, #fef3c7, #fde68a)' : 'transparent',
-                                        color: activeTab === 'decision_review' ? '#b45309' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'decision_review') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'decision_review') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <Clock style={{ width: '16px', height: '16px' }} />
-                                    <span>Decision Review ({decisionReview.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('conduct_rounds')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '160px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'conduct_rounds' ? '3px solid #a855f7' : '3px solid transparent',
-                                        background: activeTab === 'conduct_rounds' ? 'linear-gradient(to bottom, #f3e8ff, #e9d5ff)' : 'transparent',
-                                        color: activeTab === 'conduct_rounds' ? '#7e22ce' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'conduct_rounds') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'conduct_rounds') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <UserCheck style={{ width: '16px', height: '16px' }} />
-                                    <span>Conduct Rounds ({conductRounds.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('invitation_sent')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '150px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'invitation_sent' ? '3px solid #f97316' : '3px solid transparent',
-                                        background: activeTab === 'invitation_sent' ? 'linear-gradient(to bottom, #fed7aa, #fdba74)' : 'transparent',
-                                        color: activeTab === 'invitation_sent' ? '#c2410c' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'invitation_sent') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'invitation_sent') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <Calendar style={{ width: '16px', height: '16px' }} />
-                                    <span>Invitation Sent ({invitationSent.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('ongoing')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '150px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'ongoing' ? '3px solid #3b82f6' : '3px solid transparent',
-                                        background: activeTab === 'ongoing' ? 'linear-gradient(to bottom, #dbeafe, #bfdbfe)' : 'transparent',
-                                        color: activeTab === 'ongoing' ? '#1e40af' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'ongoing') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'ongoing') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <UserCheck style={{ width: '16px', height: '16px' }} />
-                                    <span>Ongoing Rounds ({ongoingRounds.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('selected')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '120px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'selected' ? '3px solid #22c55e' : '3px solid transparent',
-                                        background: activeTab === 'selected' ? 'linear-gradient(to bottom, #dcfce7, #bbf7d0)' : 'transparent',
-                                        color: activeTab === 'selected' ? '#15803d' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'selected') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'selected') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <CheckCircle style={{ width: '16px', height: '16px' }} />
-                                    <span>Selected ({selected.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('offer_sent')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '120px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'offer_sent' ? '3px solid #f97316' : '3px solid transparent',
-                                        background: activeTab === 'offer_sent' ? 'linear-gradient(to bottom, #fed7aa, #fdba74)' : 'transparent',
-                                        color: activeTab === 'offer_sent' ? '#c2410c' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'offer_sent') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'offer_sent') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <Mail style={{ width: '16px', height: '16px' }} />
-                                    <span>Offer Sent ({offerSent.length})</span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('offer_accepted')}
-                                    style={{ 
-                                        flex: '0 0 auto',
-                                        minWidth: '150px',
-                                        padding: '14px 20px',
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        transition: 'all 0.15s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        border: 'none',
-                                        borderBottom: activeTab === 'offer_accepted' ? '3px solid #22c55e' : '3px solid transparent',
-                                        background: activeTab === 'offer_accepted' ? 'linear-gradient(to bottom, #dcfce7, #bbf7d0)' : 'transparent',
-                                        color: activeTab === 'offer_accepted' ? '#15803d' : '#64748b',
-                                        cursor: 'pointer'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (activeTab !== 'offer_accepted') {
-                                            e.currentTarget.style.background = '#f8fafc';
-                                            e.currentTarget.style.color = '#475569';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (activeTab !== 'offer_accepted') {
-                                            e.currentTarget.style.background = 'transparent';
-                                            e.currentTarget.style.color = '#64748b';
-                                        }
-                                    }}
-                                >
-                                    <CheckCircle style={{ width: '16px', height: '16px' }} />
-                                    <span>Offer Accepted ({offerAccepted.length})</span>
-                                </button>
-                            </div>
-
-                            {/* Tab Content */}
+                    <div style={{
+                        background: '#ffffff',
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                        border: '1px solid #e2e8f0',
+                        overflow: 'hidden'
+                    }}>
                             <div style={{ padding: '24px' }}>
                                 {activeTab === 'pending' && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '600px', overflowY: 'auto' }}>
@@ -4142,7 +3911,6 @@ export function ManageJobs() {
                                 )}
                             </div>
                         </div>
-                    </>
                 ) : (
                     <div style={{ 
                         textAlign: 'center', 
@@ -4174,6 +3942,7 @@ export function ManageJobs() {
                         </p>
                     </div>
                 )}
+                </main>
             </div>
 
             {/* Schedule Interview Form Modal - Rendered at Root Level */}
