@@ -22,14 +22,17 @@ export function AIInterview() {
     const [interviewStarted, setInterviewStarted] = useState(false);
     const [cameraReady, setCameraReady] = useState(false);
     const [screenShareStopped, setScreenShareStopped] = useState(false);
+    const [usedScreenShare, setUsedScreenShare] = useState(false);
 
     // Refs for WebSocket and media
     const wsRef = useRef<WebSocket | null>(null);
     const cameraStreamRef = useRef<MediaStream | null>(null);
+    const screenStreamRef = useRef<MediaStream | null>(null);
     const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
+    const mediaRecorderMimeTypeRef = useRef<string>('video/webm');
     const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
     const transcriptEndRef = useRef<HTMLDivElement>(null);
     
@@ -112,99 +115,112 @@ export function AIInterview() {
 
     const setupMedia = async () => {
         try {
-            // STEP 1: REQUIRE full screen/window sharing with audio FIRST (like reference)
             setStatus('connecting');
-            
-            let screenStream: MediaStream;
-            try {
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        mediaSource: 'screen',
-                        displaySurface: 'monitor'  // Require entire display/window
-                    } as any,
-                    audio: true  // Require system audio
-                });
+            const supportsScreenShare = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
 
-                // Validate that we got the ENTIRE SCREEN (monitor only)
-                const videoTrack = screenStream.getVideoTracks()[0];
-                if (videoTrack) {
-                    const settings = videoTrack.getSettings();
-                    console.log('📺 Screen sharing settings:', settings);
+            let screenStream: MediaStream | null = null;
+            let micStream: MediaStream;
+            let cameraStream: MediaStream | null = null;
 
-                    // Check if it's the ENTIRE SCREEN (monitor) - NOT window or tab
-                    if ((settings as any).displaySurface !== 'monitor') {
-                        videoTrack.stop();
-                        screenStream.getTracks().forEach(track => track.stop());
-                        throw new Error('REQUIRED: You must share your ENTIRE SCREEN (not a window or browser tab) to start the interview.\n\nPlease select "Entire Screen" or "Screen 1/2/3" when sharing.');
+            // --- Desktop: optional screen share (getDisplayMedia supported) ---
+            if (supportsScreenShare) {
+                try {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({
+                        video: {
+                            mediaSource: 'screen',
+                            displaySurface: 'monitor'
+                        } as any,
+                        audio: true
+                    });
+                    const videoTrack = screenStream.getVideoTracks()[0];
+                    if (videoTrack) {
+                        const settings = videoTrack.getSettings();
+                        if ((settings as any).displaySurface !== 'monitor') {
+                            screenStream.getTracks().forEach(track => track.stop());
+                            throw new Error('REQUIRED: You must share your ENTIRE SCREEN (not a window or browser tab). Please select "Entire Screen" or "Screen 1/2/3".');
+                        }
                     }
+                    const audioTracks = screenStream.getAudioTracks();
+                    if (audioTracks.length === 0) {
+                        screenStream.getTracks().forEach(track => track.stop());
+                        throw new Error('REQUIRED: Share your screen WITH AUDIO. Check "Share audio" when sharing.');
+                    }
+                    if (videoTrack) {
+                        videoTrack.onended = () => setScreenShareStopped(true);
+                    }
+                    screenStreamRef.current = screenStream;
+                    setUsedScreenShare(true);
+                    console.log('✅ Screen sharing enabled (desktop)');
+                } catch (screenErr: any) {
+                    console.error('Screen sharing error:', screenErr);
+                    throw new Error(screenErr.message || 'You must share your ENTIRE SCREEN with audio to start the interview.');
                 }
-
-                // Validate that system audio is included
-                const audioTracks = screenStream.getAudioTracks();
-                if (audioTracks.length === 0) {
-                    videoTrack?.stop();
-                    screenStream.getTracks().forEach(track => track.stop());
-                    throw new Error('REQUIRED: You must share your screen WITH AUDIO.\n\nPlease check the "Share audio" or "Share tab audio" option when sharing your screen.');
-                }
-
-                if (videoTrack) {
-                    videoTrack.onended = () => setScreenShareStopped(true);
-                }
-                console.log('✅ Screen sharing enabled (entire screen with audio)');
-            } catch (screenErr: any) {
-                console.error('Screen sharing error:', screenErr);
-                throw new Error(screenErr.message || 'You must share your ENTIRE SCREEN with audio to start the interview.');
+            } else {
+                console.log('📱 Screen share not supported (e.g. mobile) — using mic + camera only');
             }
 
-            // STEP 2: Request microphone permission
-            const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // --- Microphone (required on both desktop and mobile) ---
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             console.log('✅ Microphone access granted');
 
-            // STEP 3: Request camera for live self-view
-            const cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            cameraStreamRef.current = cameraStream;
-            setCameraReady(true);
-            console.log('✅ Camera access granted');
+            // --- Camera (optional on mobile; desktop uses for self-view) ---
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraStreamRef.current = cameraStream;
+                setCameraReady(true);
+                console.log('✅ Camera access granted');
+            } catch (cameraErr) {
+                console.warn('Camera not available or denied:', cameraErr);
+                if (supportsScreenShare) {
+                    throw new Error('Please grant microphone and camera permissions to continue.');
+                }
+                // On mobile, camera is optional — continue with mic only
+            }
 
-            // Create audio context (24000 Hz for pcm16 like reference browser mode)
+            // Audio context and AI audio destination
             const audioContext = new AudioContext({ sampleRate: 24000 });
             audioContextRef.current = audioContext;
-
-            // Create destination for AI audio
             const aiAudioDestination = audioContext.createMediaStreamDestination();
             audioDestinationRef.current = aiAudioDestination;
 
-            // Combine streams for recording
-            // NOTE: We only need video, microphone, and AI audio
-            // System audio from screen share can cause echo/feedback
+            // Combined stream for recording: screen (desktop) or camera (both) + mic + AI audio
+            const videoTracks = screenStream
+                ? screenStream.getVideoTracks()
+                : cameraStream
+                    ? cameraStream.getVideoTracks()
+                    : [];
             const combinedStream = new MediaStream([
-                ...screenStream.getVideoTracks(),  // Screen video
-                ...micStream.getAudioTracks(),     // Microphone only (not system audio)
-                ...aiAudioDestination.stream.getAudioTracks()  // AI voice (captured separately)
+                ...videoTracks,
+                ...micStream.getAudioTracks(),
+                ...aiAudioDestination.stream.getAudioTracks()
             ]);
 
-            // Setup MediaRecorder
-            const mediaRecorder = new MediaRecorder(combinedStream, {
-                mimeType: 'video/webm;codecs=vp9,opus'
-            });
-
+            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+                ? 'video/webm;codecs=vp9,opus'
+                : MediaRecorder.isTypeSupported('video/webm')
+                    ? 'video/webm'
+                    : 'audio/webm';
+            const mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
+            mediaRecorderMimeTypeRef.current = mimeType;
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     recordedChunksRef.current.push(event.data);
                 }
             };
-
             mediaRecorderRef.current = mediaRecorder;
-
             console.log('✅ Media setup complete');
         } catch (err: any) {
+            if (screenStreamRef.current) {
+                screenStreamRef.current.getTracks().forEach(t => t.stop());
+                screenStreamRef.current = null;
+            }
             if (cameraStreamRef.current) {
                 cameraStreamRef.current.getTracks().forEach((t) => t.stop());
                 cameraStreamRef.current = null;
                 setCameraReady(false);
             }
             console.error('Media setup error:', err);
-            throw new Error(err.message || 'Please grant screen sharing, microphone, and camera permissions to continue');
+            throw new Error(err.message || 'Please grant microphone (and camera on mobile) to continue.');
         }
     };
 
@@ -527,7 +543,8 @@ export function AIInterview() {
                 return;
             }
 
-            const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+            const mimeType = mediaRecorderMimeTypeRef.current || 'video/webm';
+            const blob = new Blob(recordedChunksRef.current, { type: mimeType });
             const formData = new FormData();
             formData.append('file', blob, `interview_${sessionId}.webm`);
             formData.append('session_id', sessionId || '');
@@ -548,6 +565,10 @@ export function AIInterview() {
     };
 
     const cleanup = () => {
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach((t) => t.stop());
+            screenStreamRef.current = null;
+        }
         if (cameraStreamRef.current) {
             cameraStreamRef.current.getTracks().forEach((t) => t.stop());
             cameraStreamRef.current = null;
@@ -725,7 +746,7 @@ export function AIInterview() {
                 )}
             </div>
 
-            {screenShareStopped && (status === 'connecting' || status === 'active') && (
+            {usedScreenShare && screenShareStopped && (status === 'connecting' || status === 'active') && (
                 <div style={{
                     flexShrink: 0,
                     background: '#fef3c7',
