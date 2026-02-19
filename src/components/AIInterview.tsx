@@ -57,6 +57,8 @@ export function AIInterview() {
     const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
     /** True when user clicked End Interview — avoid showing "Connection closed unexpectedly" in onclose */
     const intentionalEndRef = useRef<boolean>(false);
+    /** Guard: prevent double start (multiple sessions / wrong session_id for save-calibration) */
+    const startInProgressRef = useRef<boolean>(false);
 
     useEffect(() => {
         if (!jobId || !email) {
@@ -157,6 +159,8 @@ export function AIInterview() {
     };
 
     const initializeInterview = async (calibrationImagesToSave?: string[]) => {
+        if (startInProgressRef.current) return;
+        startInProgressRef.current = true;
         try {
             setStatus('initializing');
             
@@ -183,17 +187,23 @@ export function AIInterview() {
             const data = await response.json();
             setSessionId(data.session_id);
 
-            // Save calibration images for face/eye review (if captured)
+            // Save calibration images for face/eye review (best-effort; don't block interview on 404)
             if (calibrationImagesToSave && calibrationImagesToSave.length === 4) {
-                try {
-                    await fetch(`${API_BASE_URL}/api/ai-interview/save-calibration`, {
+                const saveCalibration = async (sid: string): Promise<boolean> => {
+                    const res = await fetch(`${API_BASE_URL}/api/ai-interview/save-calibration`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            session_id: data.session_id,
-                            images: calibrationImagesToSave,
-                        }),
+                        body: JSON.stringify({ session_id: sid, images: calibrationImagesToSave }),
                     });
+                    return res.ok;
+                };
+                try {
+                    let ok = await saveCalibration(data.session_id);
+                    if (!ok) {
+                        await new Promise((r) => setTimeout(r, 500));
+                        ok = await saveCalibration(data.session_id);
+                    }
+                    if (!ok) console.warn('Calibration images could not be saved; interview will continue.');
                 } catch (calibErr) {
                     console.warn('Failed to save calibration images:', calibErr);
                 }
@@ -209,6 +219,8 @@ export function AIInterview() {
             console.error('Error initializing interview:', err);
             setError(err.message || 'Failed to initialize interview');
             setStatus('error');
+        } finally {
+            startInProgressRef.current = false;
         }
     };
 
@@ -907,17 +919,17 @@ export function AIInterview() {
                     <button
                         type="button"
                         onClick={proceedToInterview}
-                        disabled={calibrationImages.length < 4}
+                        disabled={calibrationImages.length < 4 || status === 'initializing' || status === 'connecting'}
                         style={{
-                            background: calibrationImages.length < 4 ? '#e2e8f0' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: calibrationImages.length < 4 ? '#94a3b8' : 'white',
+                            background: calibrationImages.length < 4 || status === 'initializing' || status === 'connecting' ? '#e2e8f0' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: calibrationImages.length < 4 || status === 'initializing' || status === 'connecting' ? '#94a3b8' : 'white',
                             border: 'none',
                             borderRadius: '12px',
                             padding: '14px 28px',
                             fontSize: '16px',
                             fontWeight: '700',
-                            cursor: calibrationImages.length < 4 ? 'not-allowed' : 'pointer',
-                            boxShadow: calibrationImages.length >= 4 ? '0 6px 20px rgba(16, 185, 129, 0.4)' : 'none',
+                            cursor: calibrationImages.length < 4 || status === 'initializing' || status === 'connecting' ? 'not-allowed' : 'pointer',
+                            boxShadow: calibrationImages.length >= 4 && status !== 'initializing' && status !== 'connecting' ? '0 6px 20px rgba(16, 185, 129, 0.4)' : 'none',
                             width: '100%'
                         }}
                     >
