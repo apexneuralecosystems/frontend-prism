@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
-import { API_ENDPOINTS, API_BASE_URL, getStorageUrl } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL, getStorageUrl, fetchPresignedStorageUrl } from '../config/api';
 
 // --- Types ---
 
@@ -269,6 +269,8 @@ const ApplicantsModal = ({
     const [selectedApplicantForDetails, setSelectedApplicantForDetails] = useState<any | null>(null);
     const [expandedRoundsDetail, setExpandedRoundsDetail] = useState<Set<string>>(new Set());
     const [transcriptModal, setTranscriptModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
+    const [presignedVideoUrl, setPresignedVideoUrl] = useState<string | null>(null);
+    const [loadingPresignedVideo, setLoadingPresignedVideo] = useState(false);
     const [activeTab, setActiveTab] = useState<'all' | 'in_rounds' | 'selected'>('all');
 
     const formatDate = (dateString: string) => {
@@ -307,6 +309,25 @@ const ApplicantsModal = ({
     useEffect(() => {
         setExpandedRoundsDetail(new Set());
     }, [selectedApplicantForDetails?.email]);
+
+    // Fetch presigned URL for S3 video when transcript modal shows video
+    useEffect(() => {
+        if (!transcriptModal.show || !transcriptModal.data) {
+            setPresignedVideoUrl(null);
+            setLoadingPresignedVideo(false);
+            return;
+        }
+        const raw = transcriptModal.data.face_eye_metrics?.annotated_video_url || transcriptModal.data.camera_recording_path;
+        if (!raw) {
+            setPresignedVideoUrl(null);
+            return;
+        }
+        setLoadingPresignedVideo(true);
+        setPresignedVideoUrl(null);
+        fetchPresignedStorageUrl(raw, () => localStorage.getItem('access_token'))
+            .then((url) => { setPresignedVideoUrl(url); setLoadingPresignedVideo(false); })
+            .catch(() => { setPresignedVideoUrl(getStorageUrl(raw)); setLoadingPresignedVideo(false); });
+    }, [transcriptModal.show, transcriptModal.data]);
 
     // When modal opens with offer_accepted, fetch full applicants; reset detail view
     useEffect(() => {
@@ -786,7 +807,7 @@ const ApplicantsModal = ({
                                 </p>
                             </div>
                         )}
-                        <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+                        <div style={{ padding: '20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {transcriptModal.data.transcript && transcriptModal.data.transcript.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {transcriptModal.data.transcript.map((msg: any, idx: number) => (
@@ -801,6 +822,63 @@ const ApplicantsModal = ({
                                 </div>
                             ) : (
                                 <p style={{ textAlign: 'center', color: '#94a3b8', margin: 0 }}>No transcript available</p>
+                            )}
+
+                            {/* Face & Eye Annotated Video + Full Log */}
+                            {transcriptModal.data.face_eye_metrics && !transcriptModal.data.face_eye_metrics.error && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {(transcriptModal.data.face_eye_metrics.annotated_video_url || transcriptModal.data.camera_recording_path) && (() => {
+                                        const videoUrl = presignedVideoUrl || getStorageUrl(transcriptModal.data.face_eye_metrics.annotated_video_url || transcriptModal.data.camera_recording_path);
+                                        return (
+                                        <div style={{ background: '#1e293b', borderRadius: '12px', overflow: 'hidden', border: '1px solid #334155' }}>
+                                            <div style={{ padding: '8px 12px', background: '#1e40af', color: '#fff', fontWeight: 600, fontSize: '11px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                                <span>📹 Face & Eye Annotated Video</span>
+                                                {videoUrl && (
+                                                <a href={videoUrl} target="_blank" rel="noopener noreferrer" download style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', fontSize: '11px', fontWeight: 600, textDecoration: 'none' }}>
+                                                    🎬 Open / Download Video
+                                                </a>
+                                                )}
+                                            </div>
+                                            <div style={{ padding: '10px' }}>
+                                                {loadingPresignedVideo ? (
+                                                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>Loading video...</div>
+                                                ) : videoUrl ? (
+                                                    <>
+                                                        <video
+                                                            src={videoUrl}
+                                                            controls
+                                                            style={{ width: '100%', maxHeight: '300px', borderRadius: '8px' }}
+                                                            playsInline
+                                                        />
+                                                        <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#94a3b8' }}>
+                                                            If the video doesn&apos;t play above, use the <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa' }}>Open / Download Video</a> link.
+                                                        </p>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                        );
+                                    })()}
+                                <div style={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #334155', overflow: 'hidden' }}>
+                                    <div style={{ padding: '10px 14px', background: '#1e40af', color: '#fff', fontWeight: 700, fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>UNIFIED EYE, FACE & PERSON TRACKING LOG</span>
+                                        {transcriptModal.data.face_eye_metrics.full_log_file_url && (
+                                            <a href={transcriptModal.data.face_eye_metrics.full_log_file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd', fontSize: '11px', textDecoration: 'none' }}>
+                                                Download .txt
+                                            </a>
+                                        )}
+                                    </div>
+                                    <div style={{ maxHeight: '350px', overflowY: 'auto', overflowX: 'auto', padding: '12px' }}>
+                                        {transcriptModal.data.face_eye_metrics.full_log ? (
+                                            <pre style={{ margin: 0, fontSize: '10px', fontFamily: 'ui-monospace, monospace', color: '#e2e8f0', whiteSpace: 'pre', lineHeight: 1.4 }}>
+                                                {transcriptModal.data.face_eye_metrics.full_log}
+                                            </pre>
+                                        ) : (
+                                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>No tracking log available (older recordings).</div>
+                                        )}
+                                    </div>
+                                </div>
+                                </div>
                             )}
                         </div>
                     </div>

@@ -14,7 +14,7 @@ export function AIInterview() {
     const jobId = searchParams.get('job_id');
     const email = searchParams.get('email');
 
-    const [status, setStatus] = useState<'initializing' | 'connecting' | 'active' | 'ending' | 'complete' | 'error'>('initializing');
+    const [status, setStatus] = useState<'ready' | 'calibration' | 'initializing' | 'connecting' | 'active' | 'ending' | 'complete' | 'error'>('ready');
     const [error, setError] = useState<string | null>(null);
     const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
     const [sessionId, setSessionId] = useState<string | null>(null);
@@ -24,16 +24,31 @@ export function AIInterview() {
     const [screenShareStopped, setScreenShareStopped] = useState(false);
     const [usedScreenShare, setUsedScreenShare] = useState(false);
 
+    // Calibration state (photos for face/eye review)
+    const [calibrationStep, setCalibrationStep] = useState(0);
+    const [calibrationImages, setCalibrationImages] = useState<string[]>([]);
+    const calibrationStreamRef = useRef<MediaStream | null>(null);
+    const calibrationVideoRef = useRef<HTMLVideoElement | null>(null);
+
+    const calibrationLabels = [
+        'Face STRAIGHT + Eyes CENTER',
+        'Face STRAIGHT + Eyes CENTER (confirm)',
+        'Face STRAIGHT + Eyes EXTREME LEFT',
+        'Face STRAIGHT + Eyes EXTREME RIGHT',
+    ];
+
     // Refs for WebSocket and media
     const wsRef = useRef<WebSocket | null>(null);
     const cameraStreamRef = useRef<MediaStream | null>(null);
     const screenStreamRef = useRef<MediaStream | null>(null);
-    const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
     const audioContextRef = useRef<AudioContext | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
+    const cameraRecorderRef = useRef<MediaRecorder | null>(null);
+    const cameraRecordedChunksRef = useRef<Blob[]>([]);
     const mediaRecorderMimeTypeRef = useRef<string>('video/webm');
     const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+    const liveCameraVideoRef = useRef<HTMLVideoElement | null>(null);
     const transcriptEndRef = useRef<HTMLDivElement>(null);
     
     // Audio queue management to prevent overlapping playback
@@ -49,9 +64,13 @@ export function AIInterview() {
             setStatus('error');
             return;
         }
-
-        initializeInterview();
-
+        // On real mobile, media APIs require secure context (HTTPS)
+        if (typeof window !== 'undefined' && !window.isSecureContext) {
+            setError('Microphone access requires a secure connection (HTTPS). Please open this link using https:// or use a secure network.');
+            setStatus('error');
+            return;
+        }
+        // Stay in 'ready' until user taps Start — required for getUserMedia on real mobile (user gesture)
         return () => {
             cleanup();
         };
@@ -62,18 +81,82 @@ export function AIInterview() {
         transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [transcript]);
 
+    // Show raw camera feed (no analysis) during interview
     useEffect(() => {
-        const video = cameraVideoRef.current;
-        const stream = cameraStreamRef.current;
-        if (!video || !stream) return;
-        video.srcObject = stream;
-        video.play().catch(() => {});
+        if ((status === 'connecting' || status === 'active') && cameraReady && cameraStreamRef.current) {
+            const v = liveCameraVideoRef.current;
+            if (v) {
+                v.srcObject = cameraStreamRef.current;
+                v.play().catch(() => {});
+            }
+        }
         return () => {
-            video.srcObject = null;
+            const v = liveCameraVideoRef.current;
+            if (v) v.srcObject = null;
         };
-    }, [cameraReady, status]);
+    }, [status, cameraReady]);
 
-    const initializeInterview = async () => {
+    useEffect(() => {
+        if (status !== 'calibration') return;
+        const video = calibrationVideoRef.current;
+        const stream = calibrationStreamRef.current;
+        if (video && stream) {
+            video.srcObject = stream;
+            video.play().catch(() => {});
+        }
+        return () => {
+            if (video) video.srcObject = null;
+        };
+    }, [status]);
+
+    const startCalibration = async () => {
+        setStatus('calibration');
+        setCalibrationImages([]);
+        setCalibrationStep(0);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            calibrationStreamRef.current = stream;
+            if (calibrationVideoRef.current) {
+                calibrationVideoRef.current.srcObject = stream;
+                calibrationVideoRef.current.play().catch(() => {});
+            }
+        } catch (e: any) {
+            console.error('Calibration camera error:', e);
+            setError('Camera access is required for calibration. Please allow camera access.');
+            setStatus('error');
+        }
+    };
+
+    const captureCalibrationImage = () => {
+        const video = calibrationVideoRef.current;
+        if (!video || video.readyState < 2) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(video, 0, 0);
+        const base64 = canvas.toDataURL('image/jpeg', 0.85);
+        const newImages = [...calibrationImages, base64];
+        setCalibrationImages(newImages);
+        setCalibrationStep(Math.min(calibrationStep + 1, 3));
+    };
+
+    const retakeCalibration = () => {
+        setCalibrationImages([]);
+        setCalibrationStep(0);
+    };
+
+    const proceedToInterview = async () => {
+        if (calibrationImages.length < 4) return;
+        if (calibrationStreamRef.current) {
+            calibrationStreamRef.current.getTracks().forEach((t) => t.stop());
+            calibrationStreamRef.current = null;
+        }
+        await initializeInterview(calibrationImages);
+    };
+
+    const initializeInterview = async (calibrationImagesToSave?: string[]) => {
         try {
             setStatus('initializing');
             
@@ -99,6 +182,22 @@ export function AIInterview() {
 
             const data = await response.json();
             setSessionId(data.session_id);
+
+            // Save calibration images for face/eye review (if captured)
+            if (calibrationImagesToSave && calibrationImagesToSave.length === 4) {
+                try {
+                    await fetch(`${API_BASE_URL}/api/ai-interview/save-calibration`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: data.session_id,
+                            images: calibrationImagesToSave,
+                        }),
+                    });
+                } catch (calibErr) {
+                    console.warn('Failed to save calibration images:', calibErr);
+                }
+            }
 
             // Request microphone and screen permissions
             await setupMedia();
@@ -163,12 +262,17 @@ export function AIInterview() {
             micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             console.log('✅ Microphone access granted');
 
-            // --- Camera (optional on mobile; desktop uses for self-view) ---
+            // --- Camera: HD full resolution for separate recording ---
             try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280, min: 640 },
+                        height: { ideal: 720, min: 480 },
+                    },
+                });
                 cameraStreamRef.current = cameraStream;
                 setCameraReady(true);
-                console.log('✅ Camera access granted');
+                console.log('✅ Camera access granted (HD)');
             } catch (cameraErr) {
                 console.warn('Camera not available or denied:', cameraErr);
                 if (supportsScreenShare) {
@@ -180,17 +284,19 @@ export function AIInterview() {
             // Audio context and AI audio destination
             const audioContext = new AudioContext({ sampleRate: 24000 });
             audioContextRef.current = audioContext;
+            // Required on iOS: resume after user gesture so playback works
+            await audioContext.resume();
             const aiAudioDestination = audioContext.createMediaStreamDestination();
             audioDestinationRef.current = aiAudioDestination;
 
-            // Combined stream for recording: screen (desktop) or camera (both) + mic + AI audio
-            const videoTracks = screenStream
+            // Main recording: screen (desktop) or camera (mobile) + mic + AI audio
+            const mainVideoTracks = screenStream
                 ? screenStream.getVideoTracks()
                 : cameraStream
                     ? cameraStream.getVideoTracks()
                     : [];
             const combinedStream = new MediaStream([
-                ...videoTracks,
+                ...mainVideoTracks,
                 ...micStream.getAudioTracks(),
                 ...aiAudioDestination.stream.getAudioTracks()
             ]);
@@ -200,14 +306,17 @@ export function AIInterview() {
                 : MediaRecorder.isTypeSupported('video/webm')
                     ? 'video/webm'
                     : 'audio/webm';
-            const mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
             mediaRecorderMimeTypeRef.current = mimeType;
+            const mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
             mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     recordedChunksRef.current.push(event.data);
                 }
             };
             mediaRecorderRef.current = mediaRecorder;
+
+            // Camera recording: raw HD (set up when interview starts)
+            cameraRecorderRef.current = null;
             console.log('✅ Media setup complete');
         } catch (err: any) {
             if (screenStreamRef.current) {
@@ -237,12 +346,29 @@ export function AIInterview() {
                     setStatus('active');
                     setInterviewStarted(true);
 
-                    // Start recording
+                    // Start main recording
                     if (mediaRecorderRef.current) {
+                        recordedChunksRef.current = [];
                         mediaRecorderRef.current.start(1000); // Capture every second
                         setIsRecording(true);
-                        console.log('🎥 Recording started');
+                        console.log('🎥 Main recording started');
                     }
+                    // Start camera recording: raw full HD camera (separate from screen)
+                    const startCameraRecording = () => {
+                        const stream = cameraStreamRef.current;
+                        if (stream && mediaRecorderMimeTypeRef.current) {
+                            const mime = mediaRecorderMimeTypeRef.current;
+                            const rec = new MediaRecorder(stream, { mimeType: mime });
+                            rec.ondataavailable = (e) => {
+                                if (e.data.size > 0) cameraRecordedChunksRef.current.push(e.data);
+                            };
+                            cameraRecordedChunksRef.current = [];
+                            rec.start(1000);
+                            cameraRecorderRef.current = rec;
+                            console.log('🎥 Raw HD camera recording started');
+                        }
+                    };
+                    setTimeout(startCameraRecording, 800);
 
                     // IMPORTANT: Delay before starting audio capture
                     // Give the AI time to start speaking first (prevent false speech detection)
@@ -494,23 +620,33 @@ export function AIInterview() {
                 wsRef.current = null;
             }
 
-            // 2. Then stop camera and handle recording
+            // 2. Stop recorders first (before stopping streams)
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+                setIsRecording(false);
+            }
+            if (cameraRecorderRef.current && cameraRecorderRef.current.state !== 'inactive') {
+                cameraRecorderRef.current.stop();
+            }
+
+            // 3. Stop camera and screen streams
+            if (screenStreamRef.current) {
+                screenStreamRef.current.getTracks().forEach((t) => t.stop());
+                screenStreamRef.current = null;
+            }
             if (cameraStreamRef.current) {
                 cameraStreamRef.current.getTracks().forEach((t) => t.stop());
                 cameraStreamRef.current = null;
             }
-            if (mediaRecorderRef.current && isRecording) {
-                mediaRecorderRef.current.stop();
-                setIsRecording(false);
 
-                // Wait for recording to finalize
-                await new Promise(resolve => setTimeout(resolve, 1000));
+            // 4. Wait for recordings to finalize
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
-                // Upload recording
-                await uploadRecording();
-            }
+            // 5. Upload recordings
+            await uploadRecording();
+            await uploadCameraRecording();
 
-            // Mark interview as complete
+            // 6. Mark interview as complete
             await fetch(`${API_BASE_URL}/api/ai-interview/complete`, {
                 method: 'POST',
                 headers: {
@@ -524,11 +660,6 @@ export function AIInterview() {
             });
 
             setStatus('complete');
-
-            // Redirect after 3 seconds
-            setTimeout(() => {
-                navigate('/');
-            }, 3000);
 
         } catch (err: any) {
             console.error('Error ending interview:', err);
@@ -558,13 +689,43 @@ export function AIInterview() {
                 throw new Error('Failed to upload recording');
             }
 
-            console.log('✅ Recording uploaded successfully');
+            console.log('✅ Main recording uploaded successfully');
         } catch (err) {
             console.error('Error uploading recording:', err);
         }
     };
 
+    const uploadCameraRecording = async () => {
+        try {
+            if (cameraRecordedChunksRef.current.length === 0) {
+                return;
+            }
+            const mimeType = mediaRecorderMimeTypeRef.current || 'video/webm';
+            const blob = new Blob(cameraRecordedChunksRef.current, { type: mimeType });
+            const formData = new FormData();
+            formData.append('file', blob, `camera_${sessionId}.webm`);
+            formData.append('session_id', sessionId || '');
+            formData.append('live_tracked', 'false');
+
+            const response = await fetch(`${API_BASE_URL}/api/ai-interview/save-camera-recording`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to upload camera recording');
+            }
+            console.log('✅ Camera recording uploaded (face/eye tracking)');
+        } catch (err) {
+            console.error('Error uploading camera recording:', err);
+        }
+    };
+
     const cleanup = () => {
+        if (calibrationStreamRef.current) {
+            calibrationStreamRef.current.getTracks().forEach((t) => t.stop());
+            calibrationStreamRef.current = null;
+        }
         if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach((t) => t.stop());
             screenStreamRef.current = null;
@@ -588,6 +749,184 @@ export function AIInterview() {
         const date = new Date(isoString);
         return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     };
+
+    // Start screen: user must tap to allow mic (required on real mobile)
+    if (status === 'ready') {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px'
+            }}>
+                <div style={{
+                    background: 'white',
+                    borderRadius: '20px',
+                    padding: '40px',
+                    maxWidth: '440px',
+                    width: '100%',
+                    textAlign: 'center',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+                }}>
+                    <div style={{ fontSize: '56px', marginBottom: '20px' }}>🎤</div>
+                    <h2 style={{ color: '#1e293b', marginBottom: '12px', fontSize: '22px', fontWeight: '700' }}>
+                        AI Interview
+                    </h2>
+                    <p style={{ color: '#64748b', marginBottom: '28px', fontSize: '15px', lineHeight: 1.5 }}>
+                        When you tap Start, you will first take 4 calibration photos for face and eye tracking. Then your browser will ask for microphone and camera access.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={startCalibration}
+                        style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '16px 32px',
+                            fontSize: '17px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            boxShadow: '0 6px 20px rgba(102, 126, 234, 0.4)',
+                            width: '100%'
+                        }}
+                    >
+                        Start interview
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (status === 'calibration') {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px'
+            }}>
+                <div style={{
+                    background: 'white',
+                    borderRadius: '20px',
+                    padding: '32px',
+                    maxWidth: '560px',
+                    width: '100%',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+                }}>
+                    <h2 style={{ color: '#1e293b', marginBottom: '8px', fontSize: '22px', fontWeight: '700', textAlign: 'center' }}>
+                        Calibration
+                    </h2>
+                    <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '14px', textAlign: 'center', lineHeight: 1.5 }}>
+                        These photos will be used to calibrate face and eye tracking when your interview is reviewed.
+                    </p>
+                    <p style={{
+                        color: '#667eea',
+                        marginBottom: '16px',
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        textAlign: 'center',
+                        background: '#f0f4ff',
+                        padding: '12px',
+                        borderRadius: '8px'
+                    }}>
+                        Step {calibrationStep + 1} of 4: {calibrationLabels[calibrationStep]}
+                    </p>
+
+                    <div style={{
+                        position: 'relative',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: '#111',
+                        width: '100%',
+                        aspectRatio: '4/3',
+                        marginBottom: '20px'
+                    }}>
+                        <video
+                            ref={calibrationVideoRef}
+                            autoPlay
+                            muted
+                            playsInline
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                transform: 'scaleX(-1)'
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '16px' }}>
+                        <button
+                            type="button"
+                            onClick={captureCalibrationImage}
+                            disabled={calibrationImages.length >= 4}
+                            style={{
+                                background: calibrationImages.length >= 4 ? '#94a3b8' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                padding: '12px 24px',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                cursor: calibrationImages.length >= 4 ? 'not-allowed' : 'pointer',
+                                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)'
+                            }}
+                        >
+                            Capture
+                        </button>
+                        <button
+                            type="button"
+                            onClick={retakeCalibration}
+                            disabled={calibrationImages.length === 0}
+                            style={{
+                                background: calibrationImages.length === 0 ? '#e2e8f0' : '#64748b',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '12px',
+                                padding: '12px 24px',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                cursor: calibrationImages.length === 0 ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            Retake
+                        </button>
+                    </div>
+
+                    {calibrationImages.length > 0 && (
+                        <p style={{ color: '#64748b', fontSize: '14px', textAlign: 'center', marginBottom: '16px' }}>
+                            Captured: {calibrationImages.length} of 4
+                        </p>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={proceedToInterview}
+                        disabled={calibrationImages.length < 4}
+                        style={{
+                            background: calibrationImages.length < 4 ? '#e2e8f0' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: calibrationImages.length < 4 ? '#94a3b8' : 'white',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '14px 28px',
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            cursor: calibrationImages.length < 4 ? 'not-allowed' : 'pointer',
+                            boxShadow: calibrationImages.length >= 4 ? '0 6px 20px rgba(16, 185, 129, 0.4)' : 'none',
+                            width: '100%'
+                        }}
+                    >
+                        Start Interview
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (status === 'error') {
         return (
@@ -661,12 +1000,29 @@ export function AIInterview() {
                     <h2 style={{ color: '#059669', marginBottom: '16px', fontSize: '24px', fontWeight: '700' }}>
                         Interview Complete!
                     </h2>
-                    <p style={{ color: '#6b7280', marginBottom: '24px', fontSize: '16px' }}>
+                    <p style={{ color: '#6b7280', marginBottom: '16px', fontSize: '16px' }}>
                         Thank you for completing the AI interview. Your responses have been recorded and will be reviewed by the hiring team.
                     </p>
-                    <p style={{ color: '#9ca3af', fontSize: '14px' }}>
-                        Redirecting to home page in 3 seconds...
+                    <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '24px' }}>
+                        You can close this tab now.
                     </p>
+                    <button
+                        onClick={() => navigate('/')}
+                        style={{
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '12px',
+                            padding: '14px 28px',
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Return to Home
+                    </button>
                 </div>
             </div>
         );
@@ -899,7 +1255,7 @@ export function AIInterview() {
                                 minHeight: '180px'
                             }}>
                                 <video
-                                    ref={cameraVideoRef}
+                                    ref={liveCameraVideoRef}
                                     autoPlay
                                     muted
                                     playsInline

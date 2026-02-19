@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect, refreshAccessToken } from '../utils/auth';
-import { API_ENDPOINTS, API_BASE_URL, getStorageUrl } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL, getStorageUrl, fetchPresignedStorageUrl } from '../config/api';
 
 interface Job {
     job_id: string;
@@ -75,6 +75,8 @@ export function ManageJobs() {
     // AI Interview transcript state
     const [showTranscriptModal, setShowTranscriptModal] = useState(false);
     const [selectedTranscript, setSelectedTranscript] = useState<any>(null);
+    const [presignedVideoUrl, setPresignedVideoUrl] = useState<string | null>(null);
+    const [loadingPresignedVideo, setLoadingPresignedVideo] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [menuHovered, setMenuHovered] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -102,6 +104,25 @@ export function ManageJobs() {
             setIsAIInterview(false);
         }
     }, [selectedRound]);
+
+    // Fetch presigned URL for S3 video when transcript modal shows video
+    useEffect(() => {
+        if (!showTranscriptModal || !selectedTranscript) {
+            setPresignedVideoUrl(null);
+            setLoadingPresignedVideo(false);
+            return;
+        }
+        const raw = selectedTranscript.face_eye_metrics?.annotated_video_url || selectedTranscript.camera_recording_path;
+        if (!raw) {
+            setPresignedVideoUrl(null);
+            return;
+        }
+        setLoadingPresignedVideo(true);
+        setPresignedVideoUrl(null);
+        fetchPresignedStorageUrl(raw, () => localStorage.getItem('access_token'))
+            .then((url) => { setPresignedVideoUrl(url); setLoadingPresignedVideo(false); })
+            .catch(() => { setPresignedVideoUrl(getStorageUrl(raw)); setLoadingPresignedVideo(false); });
+    }, [showTranscriptModal, selectedTranscript]);
 
     const submitReviewRequest = async () => {
         if (!selectedJobId || !selectedApplicant || !reviewEmail) return;
@@ -4619,11 +4640,14 @@ export function ManageJobs() {
                             </div>
                         )}
 
-                        {/* Transcript Content */}
+                        {/* Scrollable: Transcript + Face/Eye Full Log */}
                         <div style={{
                             flex: 1,
                             overflowY: 'auto',
-                            padding: '24px'
+                            padding: '24px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '24px'
                         }}>
                             {selectedTranscript.transcript && selectedTranscript.transcript.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -4680,6 +4704,75 @@ export function ManageJobs() {
                                     color: '#94a3b8'
                                 }}>
                                     No transcript available
+                                </div>
+                            )}
+
+                            {/* Face & Eye Annotated Video + Full Log */}
+                            {selectedTranscript.face_eye_metrics && !selectedTranscript.face_eye_metrics.error && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {(selectedTranscript.face_eye_metrics.annotated_video_url || selectedTranscript.camera_recording_path) && (() => {
+                                        const videoUrl = presignedVideoUrl || getStorageUrl(selectedTranscript.face_eye_metrics.annotated_video_url || selectedTranscript.camera_recording_path);
+                                        return (
+                                        <div style={{ background: '#1e293b', borderRadius: '12px', overflow: 'hidden', border: '1px solid #334155' }}>
+                                            <div style={{ padding: '10px 14px', background: '#1e40af', color: '#fff', fontWeight: 600, fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                                <span>📹 Face & Eye Annotated Video</span>
+                                                {videoUrl && (
+                                                <a href={videoUrl} target="_blank" rel="noopener noreferrer" download style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.2)', color: '#fff', borderRadius: '8px', fontSize: '11px', fontWeight: 600, textDecoration: 'none' }}>
+                                                    🎬 Open / Download Video
+                                                </a>
+                                                )}
+                                            </div>
+                                            <div style={{ padding: '12px' }}>
+                                                {loadingPresignedVideo ? (
+                                                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>Loading video...</div>
+                                                ) : videoUrl ? (
+                                                    <>
+                                                        <video
+                                                            src={videoUrl}
+                                                            controls
+                                                            style={{ width: '100%', maxHeight: '360px', borderRadius: '8px' }}
+                                                            playsInline
+                                                        />
+                                                        <p style={{ margin: '8px 0 0', fontSize: '11px', color: '#94a3b8' }}>
+                                                            If the video doesn&apos;t play above, use the <a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa' }}>Open / Download Video</a> link.
+                                                        </p>
+                                                    </>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                        );
+                                    })()}
+                                <div style={{
+                                    background: '#0f172a',
+                                    borderRadius: '12px',
+                                    border: '1px solid #334155',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{ padding: '12px 16px', background: '#1e40af', color: '#fff', fontWeight: 700, fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>UNIFIED EYE, FACE & PERSON TRACKING LOG</span>
+                                        {selectedTranscript.face_eye_metrics.full_log_file_url && (
+                                            <a href={selectedTranscript.face_eye_metrics.full_log_file_url} target="_blank" rel="noopener noreferrer" style={{ color: '#93c5fd', fontSize: '12px', textDecoration: 'none' }}>
+                                                Download .txt
+                                            </a>
+                                        )}
+                                    </div>
+                                    <div style={{ maxHeight: '450px', overflowY: 'auto', overflowX: 'auto', padding: '16px' }}>
+                                        {selectedTranscript.face_eye_metrics.full_log ? (
+                                            <pre style={{
+                                                margin: 0,
+                                                fontSize: '11px',
+                                                fontFamily: 'ui-monospace, monospace',
+                                                color: '#e2e8f0',
+                                                whiteSpace: 'pre',
+                                                lineHeight: 1.4
+                                            }}>
+                                                {selectedTranscript.face_eye_metrics.full_log}
+                                            </pre>
+                                        ) : (
+                                            <div style={{ fontSize: '12px', color: '#94a3b8' }}>No tracking log available (older recordings).</div>
+                                        )}
+                                    </div>
+                                </div>
                                 </div>
                             )}
                         </div>
