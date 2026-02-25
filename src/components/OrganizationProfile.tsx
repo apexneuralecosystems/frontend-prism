@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Pencil, Save, X, Upload, CheckCircle, MapPin, Mail, Phone,
-    Briefcase, Globe, Users, Building2, Calendar, FileText, LogOut, Linkedin, Trash2, CreditCard, Menu, UserCircle
+    Briefcase, Globe, Users, Building2, Calendar, FileText, LogOut, Linkedin, Trash2, CreditCard, Menu, UserCircle, Cloud
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
@@ -156,6 +156,8 @@ export function OrganizationProfile() {
     }>>([]);
     const [linkedInConnected, setLinkedInConnected] = useState<boolean | null>(null);
     const [linkedInConnecting, setLinkedInConnecting] = useState(false);
+    const [salesforceConnected, setSalesforceConnected] = useState<boolean | null>(null);
+    const [salesforceConnecting, setSalesforceConnecting] = useState(false);
 
     useEffect(() => {
         // Check if we're returning from a payment (check URL params or localStorage flag)
@@ -345,21 +347,44 @@ export function OrganizationProfile() {
                 setLinkedInConnected(false);
             }
         };
+
+        const fetchSalesforceStatus = async () => {
+            try {
+                const res = await authenticatedFetch(
+                    API_ENDPOINTS.SALESFORCE_STATUS,
+                    { method: 'GET' },
+                    navigate
+                );
+                if (res?.ok) {
+                    const result = await res.json();
+                    setSalesforceConnected(result.connected === true);
+                } else {
+                    setSalesforceConnected(false);
+                }
+            } catch {
+                setSalesforceConnected(false);
+            }
+        };
         
-        // Fetch credits, payment history, and LinkedIn status (org)
+        // Fetch credits, payment history, LinkedIn and Salesforce status (org)
         const fetchAll = async () => {
             await Promise.all([
                 fetchCredits(),
                 fetchPaymentHistory(),
-                fetchLinkedInStatus()
+                fetchLinkedInStatus(),
+                fetchSalesforceStatus(),
             ]);
         };
         
         fetchAll();
         
-        // If returning from payment or LinkedIn connect, refresh immediately
-        if (paymentSuccess || urlParams.get('linkedin_connected') === '1') {
+        // If returning from payment, LinkedIn connect, or Salesforce connect, refresh immediately
+        const salesforceConnectedParam = urlParams.get('salesforce_connected') === '1';
+        if (paymentSuccess || urlParams.get('linkedin_connected') === '1' || salesforceConnectedParam) {
             if (urlParams.get('linkedin_connected') === '1') {
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+            if (salesforceConnectedParam) {
                 window.history.replaceState({}, '', window.location.pathname);
             }
             setTimeout(() => {
@@ -2637,6 +2662,71 @@ export function OrganizationProfile() {
                                         }}
                                     >
                                         {linkedInConnecting ? 'Connecting…' : 'Connect LinkedIn'}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Salesforce Connect - owner only, below LinkedIn Connect */}
+                    {isOwner && (
+                        <div style={{
+                            padding: '16px',
+                            borderRadius: '8px',
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            marginTop: '8px',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Cloud style={{ width: '20px', height: '20px', color: '#00A1E0' }} />
+                                    <span style={{ fontWeight: '600', color: '#334155' }}>Salesforce Connect</span>
+                                    <span style={{
+                                        padding: '4px 10px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        background: salesforceConnected === true ? '#dcfce7' : salesforceConnected === false ? '#fee2e2' : '#e2e8f0',
+                                        color: salesforceConnected === true ? '#166534' : salesforceConnected === false ? '#991b1b' : '#64748b'
+                                    }}>
+                                        {salesforceConnected === true ? 'Connected' : salesforceConnected === false ? 'Not connected' : '…'}
+                                    </span>
+                                </div>
+                                {salesforceConnected === false && (
+                                    <button
+                                        type="button"
+                                        disabled={salesforceConnecting}
+                                        onClick={async () => {
+                                            setSalesforceConnecting(true);
+                                            try {
+                                                const res = await authenticatedFetch(
+                                                    API_ENDPOINTS.SALESFORCE_CONNECT,
+                                                    { method: 'GET' },
+                                                    navigate
+                                                );
+                                                if (res?.ok) {
+                                                    const data = await res.json();
+                                                    if (data.authorization_url) {
+                                                        window.location.href = data.authorization_url;
+                                                    }
+                                                }
+                                            } finally {
+                                                setSalesforceConnecting(false);
+                                            }
+                                        }}
+                                        style={{
+                                            padding: '8px 16px',
+                                            background: '#00A1E0',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            fontWeight: '500',
+                                            cursor: salesforceConnecting ? 'not-allowed' : 'pointer',
+                                            fontSize: '14px'
+                                        }}
+                                    >
+                                        {salesforceConnecting ? 'Connecting…' : 'Connect Salesforce'}
                                     </button>
                                 )}
                             </div>

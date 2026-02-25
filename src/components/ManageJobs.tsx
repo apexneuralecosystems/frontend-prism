@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Briefcase, Users, CheckCircle, X, Clock, UserCheck, LogOut,
-    ChevronDown, Mail, FileText, Download, Calendar, Menu, UserCircle, RefreshCw
+    ChevronDown, Mail, FileText, Download, Calendar, Menu, UserCircle, RefreshCw, Cloud
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect, refreshAccessToken } from '../utils/auth';
@@ -80,6 +80,9 @@ export function ManageJobs() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [menuHovered, setMenuHovered] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    const [sfPushing, setSfPushing] = useState(false);
+    const [sfPushResult, setSfPushResult] = useState<{ jobId: string; alreadyPushed: boolean; message: string } | null>(null);
+    const [sfPushError, setSfPushError] = useState<string | null>(null);
     
     // Make setters globally accessible to bypass closure issues
     (window as any).openTranscriptModal = (data: any) => {
@@ -279,6 +282,8 @@ export function ManageJobs() {
 
     const handleJobSelect = (jobId: string) => {
         setSelectedJobId(jobId);
+        setSfPushResult(null);
+        setSfPushError(null);
         if (jobId) {
             fetchApplicants(jobId);
         }
@@ -436,6 +441,35 @@ export function ManageJobs() {
             setMessage({ type: 'error', text: 'Failed to refresh data' });
         } finally {
             setRefreshing(false);
+        }
+    };
+
+    const handlePushToSalesforce = async (jobId: string) => {
+        setSfPushing(true);
+        setSfPushError(null);
+        setSfPushResult(null);
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.SALESFORCE_PUSH_JOB(jobId),
+                { method: 'POST' },
+                navigate
+            );
+            if (!res) return;
+            const data = await res.json();
+            if (!res.ok) {
+                setSfPushError(data?.detail || 'Failed to push to Salesforce');
+                return;
+            }
+            setSfPushResult({
+                jobId,
+                alreadyPushed: !!data.already_pushed,
+                message: data.already_pushed ? 'Data already pushed to Salesforce' : 'Job data pushed to Salesforce!',
+            });
+        } catch (err) {
+            console.error('Salesforce push error:', err);
+            setSfPushError('Error pushing to Salesforce. Please try again.');
+        } finally {
+            setSfPushing(false);
         }
     };
 
@@ -1101,6 +1135,69 @@ export function ManageJobs() {
                         <RefreshCw style={{ width: '16px', height: '16px', animation: refreshing ? 'spin 1s linear infinite' : undefined }} />
                         Refresh
                     </button>
+                    {/* Push to Salesforce button — visible when a job is selected */}
+                    {selectedJobId && (
+                        <div style={{ marginTop: '4px' }}>
+                            {sfPushResult && sfPushResult.jobId === selectedJobId ? (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '8px 12px',
+                                    borderRadius: '8px',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    background: '#dcfce7',
+                                    color: '#166534',
+                                    border: '1px solid #86efac',
+                                }}>
+                                    <CheckCircle style={{ width: '14px', height: '14px', flexShrink: 0 }} />
+                                    {sfPushResult.message}
+                                </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    disabled={sfPushing}
+                                    onClick={() => handlePushToSalesforce(selectedJobId)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px',
+                                        width: '100%',
+                                        padding: '10px 16px',
+                                        borderRadius: '8px',
+                                        fontSize: '13px',
+                                        fontWeight: '500',
+                                        color: sfPushing ? '#94a3b8' : '#ffffff',
+                                        background: sfPushing ? '#e2e8f0' : 'linear-gradient(to bottom right, #00A1E0, #0070D2)',
+                                        border: 'none',
+                                        cursor: sfPushing ? 'wait' : 'pointer',
+                                        transition: 'all 0.15s ease',
+                                        boxShadow: sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!sfPushing) {
+                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 161, 224, 0.5)';
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.boxShadow = sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    <Cloud style={{ width: '15px', height: '15px' }} />
+                                    {sfPushing ? 'Pushing…' : 'Push to Salesforce'}
+                                </button>
+                            )}
+                            {sfPushError && (
+                                <p style={{ fontSize: '12px', color: '#dc2626', margin: '6px 0 0 0', lineHeight: '1.4' }}>
+                                    {sfPushError}
+                                </p>
+                            )}
+                        </div>
+                    )}
                     {ongoingJobs.length === 0 && (
                         <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0', fontStyle: 'italic' }}>
                             No jobs available. Post a job from Organization Job Post to get started.

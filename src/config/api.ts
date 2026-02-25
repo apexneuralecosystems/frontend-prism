@@ -93,6 +93,10 @@ export const API_ENDPOINTS = {
   LINKEDIN_CONNECT: `${API_BASE_URL}/api/oauth/linkedin/connect`,
   LINKEDIN_STATUS: `${API_BASE_URL}/api/oauth/linkedin/status`,
   LINKEDIN_POST_JOB: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/post-linkedin`,
+  // Salesforce (org-only)
+  SALESFORCE_CONNECT: `${API_BASE_URL}/api/oauth/salesforce/connect`,
+  SALESFORCE_STATUS: `${API_BASE_URL}/api/oauth/salesforce/status`,
+  SALESFORCE_PUSH_JOB: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/push-salesforce`,
   STORAGE_PRESIGNED_URL: (url: string) => `${API_BASE_URL}/api/storage/presigned-url?url=${encodeURIComponent(url)}`,
 } as const;
 

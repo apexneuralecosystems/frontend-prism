@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Briefcase, Plus, X, FileText, MapPin, Users, Calendar,
     DollarSign, CheckCircle, AlertCircle, Upload, LogOut, Building2,
-    ChevronDown, ChevronRight, Eye, Menu, UserCircle, ArrowLeft
+    ChevronDown, ChevronRight, Eye, Menu, UserCircle, ArrowLeft, Cloud
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authenticatedFetch, clearAuthAndRedirect } from '../utils/auth';
@@ -30,6 +30,8 @@ interface JobPost {
     offer_accepted_count?: number;
     created_at: string;
     closed_at?: string;
+    salesforce_pushed?: boolean;
+    salesforce_record_id?: string;
 }
 
 function formatPackageLpa(job: JobPost): string {
@@ -46,13 +48,18 @@ const JobCard = ({
     job,
     status,
     onClose,
-    onViewApplicants
+    onViewApplicants,
+    onPushToSalesforce,
 }: {
     job: JobPost;
     status: 'open' | 'ongoing' | 'closed';
     onClose?: (jobId: string) => void;
     onViewApplicants?: (job: JobPost, filterStatus?: string) => void;
+    onPushToSalesforce?: (jobId: string) => Promise<{ already_pushed?: boolean; message?: string } | null>;
 }) => {
+    const [sfPushing, setSfPushing] = useState(false);
+    const [sfLocalPushed, setSfLocalPushed] = useState(false);
+    const [sfMessage, setSfMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-IN', {
             year: 'numeric',
@@ -204,7 +211,7 @@ const JobCard = ({
                         View Job Description
                     </a>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     {status === 'ongoing' && onClose && (
                         <button
                             onClick={() => onClose(job.job_id)}
@@ -233,6 +240,77 @@ const JobCard = ({
                             Close Job
                         </button>
                     )}
+                    {/* Push to Salesforce — visible on closed job cards */}
+                    {status === 'closed' && onPushToSalesforce && (
+                        (job.salesforce_pushed || sfLocalPushed) ? (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '12px',
+                                color: '#166534',
+                                background: '#dcfce7',
+                                padding: '5px 10px',
+                                borderRadius: '8px',
+                                fontWeight: '500',
+                                border: '1px solid #86efac'
+                            }}>
+                                <CheckCircle style={{ width: '13px', height: '13px' }} />
+                                Data pushed to Salesforce
+                            </div>
+                        ) : (
+                            <button
+                                disabled={sfPushing}
+                                onClick={async () => {
+                                    setSfPushing(true);
+                                    setSfMessage(null);
+                                    try {
+                                        const res = await onPushToSalesforce(job.job_id);
+                                        if (!res) return;
+                                        if (res.already_pushed) {
+                                            setSfLocalPushed(true);
+                                            setSfMessage({ type: 'info', text: 'Already pushed to Salesforce' });
+                                        } else {
+                                            setSfLocalPushed(true);
+                                            setSfMessage({ type: 'success', text: 'Pushed to Salesforce!' });
+                                        }
+                                    } catch {
+                                        setSfMessage({ type: 'error', text: 'Push failed. Check console.' });
+                                    } finally {
+                                        setSfPushing(false);
+                                    }
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 14px',
+                                    fontSize: '13px',
+                                    background: sfPushing ? '#e2e8f0' : 'linear-gradient(to bottom right, #00A1E0, #0070D2)',
+                                    color: sfPushing ? '#94a3b8' : '#ffffff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: sfPushing ? 'not-allowed' : 'pointer',
+                                    fontWeight: '500',
+                                    boxShadow: sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)',
+                                    transition: 'all 0.15s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!sfPushing) {
+                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 161, 224, 0.5)';
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.boxShadow = sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                <Cloud style={{ width: '14px', height: '14px' }} />
+                                {sfPushing ? 'Pushing…' : 'Push to Salesforce'}
+                            </button>
+                        )
+                    )}
                     <div style={{ fontSize: '12px', color: '#94a3b8' }}>
                         {status === 'closed' && job.closed_at ?
                             `Closed ${formatDate(job.closed_at)}` :
@@ -241,6 +319,21 @@ const JobCard = ({
                     </div>
                 </div>
             </div>
+            {/* SF push inline message */}
+            {sfMessage && (
+                <div style={{
+                    marginTop: '10px',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '500',
+                    background: sfMessage.type === 'error' ? '#fef2f2' : sfMessage.type === 'success' ? '#f0fdf4' : '#eff6ff',
+                    color: sfMessage.type === 'error' ? '#dc2626' : sfMessage.type === 'success' ? '#16a34a' : '#2563eb',
+                    border: `1px solid ${sfMessage.type === 'error' ? '#fecaca' : sfMessage.type === 'success' ? '#bbf7d0' : '#bfdbfe'}`,
+                }}>
+                    {sfMessage.text}
+                </div>
+            )}
         </div>
     );
 };
@@ -1255,6 +1348,46 @@ export function OrganizationJobPost() {
         } catch (err) {
             console.error('Failed to close job:', err);
             setMessage({ type: 'error', text: 'Error closing job posting' });
+        }
+    };
+
+    const handlePushToSalesforce = async (
+        jobId: string
+    ): Promise<{ already_pushed?: boolean; message?: string } | null> => {
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.SALESFORCE_PUSH_JOB(jobId),
+                { method: 'POST' },
+                navigate
+            );
+            if (!res) return null;
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                const detail: string = data?.detail || 'Failed to push to Salesforce';
+                setMessage({ type: 'error', text: detail });
+                return null;
+            }
+
+            if (data.already_pushed) {
+                setMessage({ type: 'success', text: 'Data already pushed to Salesforce.' });
+                return { already_pushed: true };
+            }
+
+            setMessage({ type: 'success', text: 'Job data pushed to Salesforce successfully!' });
+            // Mark the job locally so the badge shows immediately
+            setJobs((prev) => ({
+                ...prev,
+                closed: prev.closed.map((j) =>
+                    j.job_id === jobId ? { ...j, salesforce_pushed: true } : j
+                ),
+            }));
+            return { message: 'Pushed' };
+        } catch (err) {
+            console.error('Salesforce push error:', err);
+            setMessage({ type: 'error', text: 'Error pushing to Salesforce. Check connection.' });
+            return null;
         }
     };
 
@@ -2349,6 +2482,7 @@ export function OrganizationJobPost() {
                                         status={activeTab}
                                         onClose={activeTab === 'ongoing' ? handleCloseJob : undefined}
                                         onViewApplicants={handleViewApplicants}
+                                        onPushToSalesforce={activeTab === 'closed' ? handlePushToSalesforce : undefined}
                                     />
                                 ))}
                             </div>
