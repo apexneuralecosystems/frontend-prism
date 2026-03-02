@@ -52,9 +52,16 @@ export function HeroSection() {
               <Button 
                 variant="outline" 
                 className="border-[#0052FF] text-[#0052FF] hover:bg-[#E6ECFF] rounded-lg px-8 py-6 h-auto"
+                asChild
               >
-                <Play className="w-5 h-5 mr-2" />
-                Watch PRISM in Action
+                <a
+                  href="https://www.youtube.com/watch?v=JUDzMxTt4ic"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Watch PRISM in Action
+                </a>
               </Button>
             </div>
           </div>

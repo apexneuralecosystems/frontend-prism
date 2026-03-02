@@ -76,35 +76,61 @@ const SectionCard = ({
     const [isHovered, setIsHovered] = useState(false);
 
     return (
-        <div 
+        <div
             style={{
-                background: '#ffffff',
-                borderRadius: '12px',
-                boxShadow: isHovered ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                border: '1px solid #e2e8f0',
-                marginBottom: '24px',
+                background: '#FFFFFF',
+                borderRadius: 12,
+                boxShadow: isHovered
+                    ? '0 18px 45px rgba(15, 23, 42, 0.10)'
+                    : '0 10px 30px rgba(15, 23, 42, 0.06)',
+                border: '1px solid #E2E8F0',
+                marginBottom: 24,
                 overflow: 'hidden',
-                transition: 'box-shadow 0.3s ease'
+                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                transition: 'transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out'
             }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             {title && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '16px 24px',
-                    borderBottom: '1px solid #f1f5f9',
-                    background: 'linear-gradient(to right, #f8fafc, #ffffff)'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {Icon && <Icon style={{ width: '20px', height: '20px', color: '#2563eb' }} />}
-                        <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b' }}>{title}</h2>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '16px 24px',
+                        borderBottom: '1px solid #E5E7EB',
+                        background: '#F9FAFB'
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {Icon && (
+                            <Icon
+                                style={{
+                                    width: 20,
+                                    height: 20,
+                                    color: '#0052FF'
+                                }}
+                            />
+                        )}
+                        <h2
+                            style={{
+                                fontSize: 16,
+                                fontWeight: 600,
+                                letterSpacing: 0.2,
+                                color: '#111827'
+                            }}
+                        >
+                            {title}
+                        </h2>
                     </div>
                 </div>
             )}
-            <div style={{ padding: '24px' }}>
+            <div
+                style={{
+                    padding: 24
+                }}
+            >
                 {children}
             </div>
         </div>
@@ -440,9 +466,7 @@ export function OrganizationProfile() {
         setMessage(null);
         try {
             // Ensure we store only the relative path (e.g., /static/uploads/...)
-            const logoPath = dataToSave.logoUrl
-                ? dataToSave.logoUrl.replace(/^https?:\/\/[^/]+/, '')
-                : '';
+            const logoPath = dataToSave.logoUrl || '';
 
             // Map frontend fields to backend schema
             const employeesForBackend = (dataToSave.employees || []).map(emp => ({
@@ -1224,105 +1248,171 @@ export function OrganizationProfile() {
         }
 
         return (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, minmax(0, 1fr))', gap: '24px' }}>
-                {/* Company Header */}
-                <div style={{
-                    gridColumn: '1 / -1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    marginBottom: '16px'
-                }}>
-                    <div style={{
-                        width: '80px',
-                        height: '80px',
-                        borderRadius: '50%',
-                        background: '#e2e8f0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden'
-                    }}>
-                        {data.logoUrl ? (
-                            <img 
-                                src={getStorageUrl(data.logoUrl)} 
-                                alt="Logo" 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                        ) : (
-                            <Building2 style={{ width: '40px', height: '40px', color: '#94a3b8' }} />
-                        )}
-                    </div>
-                    <div>
-                        <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>
-                            {data.companyName || 'Company Name'}
-                        </h3>
-                        <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-                            {data.industry}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Company Details Grid */}
-                <div style={{
-                    gridColumn: '1 / -1',
+            <div
+                    style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(1, minmax(0, 1fr))',
-                    gap: '24px'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <Users style={{ width: '20px', height: '20px', color: '#64748b', marginTop: '2px', flexShrink: 0 }} />
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#334155', marginBottom: '4px' }}>Company Size</p>
-                            <p style={{ color: '#0f172a', fontWeight: '500' }}>{data.companySize} employees</p>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <Calendar style={{ width: '20px', height: '20px', color: '#64748b', marginTop: '2px', flexShrink: 0 }} />
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#334155', marginBottom: '4px' }}>Founded</p>
-                            <p style={{ color: '#0f172a', fontWeight: '500' }}>{data.foundedYear}</p>
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <Globe style={{ width: '20px', height: '20px', color: '#64748b', marginTop: '2px', flexShrink: 0 }} />
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#334155', marginBottom: '4px' }}>Website</p>
+                    gap: 24
+                    }}
+                >
+                {/* Contact / location */}
+                <div
+                    style={{
+                        gridColumn: '1 / -1',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        gap: 16
+                    }}
+                >
+                    {/* Website */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.6,
+                                color: '#6B7280'
+                            }}
+                        >
+                            Website
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Globe style={{ width: 16, height: 16, color: '#6B7280', flexShrink: 0 }} />
                             {data.website ? (
-                                <a 
-                                    href={data.website} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    style={{ color: '#2563eb', fontWeight: '500', textDecoration: 'none' }}
-                                    onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                                    onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                                <a
+                                    href={data.website}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    style={{
+                                        fontSize: 14,
+                                        color: '#0052FF',
+                                        textDecoration: 'none',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}
                                 >
                                     {data.website}
                                 </a>
                             ) : (
-                                <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not provided</p>
+                                <span
+                                    style={{
+                                        fontSize: 14,
+                                        color: '#9CA3AF',
+                                        fontStyle: 'italic'
+                                    }}
+                                >
+                                    Not provided
+                                </span>
                             )}
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <Mail style={{ width: '20px', height: '20px', color: '#64748b', marginTop: '2px', flexShrink: 0 }} />
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#334155', marginBottom: '4px' }}>Email</p>
-                            <p style={{ color: '#0f172a', fontWeight: '500' }}>{data.email}</p>
+
+                    {/* Email */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.6,
+                                color: '#6B7280'
+                            }}
+                        >
+                            Email
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Mail style={{ width: 16, height: 16, color: '#6B7280', flexShrink: 0 }} />
+                            <span
+                                style={{
+                                    fontSize: 14,
+                                    color: '#111827',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {data.email}
+                            </span>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <Phone style={{ width: '20px', height: '20px', color: '#64748b', marginTop: '2px', flexShrink: 0 }} />
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#334155', marginBottom: '4px' }}>Phone</p>
-                            <p style={{ color: '#0f172a', fontWeight: '500' }}>{data.phone || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not provided</span>}</p>
+
+                    {/* Phone */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.6,
+                                color: '#6B7280'
+                            }}
+                        >
+                            Phone
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Phone style={{ width: 16, height: 16, color: '#6B7280', flexShrink: 0 }} />
+                            <span
+                                style={{
+                                    fontSize: 14,
+                                    color: data.phone ? '#111827' : '#9CA3AF',
+                                    fontStyle: data.phone ? 'normal' : 'italic'
+                                }}
+                            >
+                                {data.phone || 'Not provided'}
+                            </span>
                         </div>
                     </div>
-                    <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <MapPin style={{ width: '20px', height: '20px', color: '#64748b', marginTop: '2px', flexShrink: 0 }} />
-                        <div>
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: '#334155', marginBottom: '4px' }}>Location</p>
-                            <p style={{ color: '#0f172a', fontWeight: '500' }}>{data.location || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not provided</span>}</p>
+
+                    {/* Location */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.6,
+                                color: '#6B7280'
+                            }}
+                        >
+                            Location
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <MapPin style={{ width: 16, height: 16, color: '#6B7280', flexShrink: 0 }} />
+                            <span
+                                style={{
+                                    fontSize: 14,
+                                    color: data.location ? '#111827' : '#9CA3AF',
+                                    fontStyle: data.location ? 'normal' : 'italic'
+                                }}
+                            >
+                                {data.location || 'Not provided'}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -1366,17 +1456,22 @@ export function OrganizationProfile() {
 
         return (
             <div style={{
-                padding: '16px',
-                background: 'linear-gradient(135deg, #ede9fe, #f3e8ff)',
-                borderRadius: '8px',
-                border: '1px solid #ddd6fe'
+                padding: '18px 20px',
+                background: '#FFFFFF',
+                borderRadius: 10,
+                border: '1px solid #E5E7EB'
             }}>
                 <p style={{
-                    color: '#334155',
-                    lineHeight: '1.75',
-                    whiteSpace: 'pre-wrap'
+                    color: '#111827',
+                    lineHeight: 1.7,
+                    whiteSpace: 'pre-wrap',
+                    fontSize: 14
                 }}>
-                    {data.description || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No description provided.</span>}
+                    {data.description || (
+                        <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>
+                            No description provided yet. Share how your team hires, grows, and collaborates.
+                        </span>
+                    )}
                 </p>
             </div>
         );
@@ -1476,7 +1571,7 @@ export function OrganizationProfile() {
         }
 
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {data.linkedinUrl && (
                     <a 
                         href={data.linkedinUrl} 
@@ -1485,36 +1580,32 @@ export function OrganizationProfile() {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
-                            padding: '16px',
-                            background: 'linear-gradient(135deg, #dbeafe, #e0f2fe)',
-                            borderRadius: '8px',
-                            border: '1px solid #bae6fd',
-                            color: '#0c4a6e',
+                            gap: 12,
+                            padding: '12px 14px',
+                            background: '#FFFFFF',
+                            borderRadius: 10,
+                            border: '1px solid #E5E7EB',
+                            color: '#111827',
                             textDecoration: 'none',
-                            transition: 'all 0.15s ease',
-                            boxShadow: '0 2px 4px rgba(14, 165, 233, 0.1)'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #bfdbfe, #bae6fd)';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #dbeafe, #e0f2fe)';
-                            e.currentTarget.style.transform = 'translateY(0)';
+                            transition: 'background 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out'
                         }}
                     >
                         <div style={{
-                            padding: '8px',
-                            background: '#ffffff',
-                            borderRadius: '8px',
+                            padding: 8,
+                            background: '#EFF6FF',
+                            borderRadius: 8,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}>
                             <Linkedin style={{ width: '24px', height: '24px', color: '#0a66c2' }} />
                         </div>
-                        <span style={{ fontWeight: '600' }}>{data.linkedinUrl}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 600, fontSize: 14 }}>LinkedIn</span>
+                            <span style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {data.linkedinUrl}
+                            </span>
+                        </div>
                     </a>
                 )}
                 {data.twitterUrl && (
@@ -1525,36 +1616,32 @@ export function OrganizationProfile() {
                         style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '12px',
-                            padding: '16px',
-                            background: 'linear-gradient(135deg, #fce7f3, #fae8ff)',
-                            borderRadius: '8px',
-                            border: '1px solid #f9a8d4',
-                            color: '#831843',
+                            gap: 12,
+                            padding: '12px 14px',
+                            background: '#FFFFFF',
+                            borderRadius: 10,
+                            border: '1px solid #E5E7EB',
+                            color: '#111827',
                             textDecoration: 'none',
-                            transition: 'all 0.15s ease',
-                            boxShadow: '0 2px 4px rgba(236, 72, 153, 0.1)'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #fbcfe8, #f5d0fe)';
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'linear-gradient(135deg, #fce7f3, #fae8ff)';
-                            e.currentTarget.style.transform = 'translateY(0)';
+                            transition: 'background 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out'
                         }}
                     >
                         <div style={{
-                            padding: '8px',
-                            background: '#ffffff',
-                            borderRadius: '8px',
+                            padding: 8,
+                            background: '#F9FAFB',
+                            borderRadius: 8,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}>
-                            <Globe style={{ width: '24px', height: '24px', color: '#ec4899' }} />
+                            <Globe style={{ width: 24, height: 24, color: '#4B5563' }} />
                         </div>
-                        <span style={{ fontWeight: '600' }}>{data.twitterUrl}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 600, fontSize: 14 }}>Social</span>
+                            <span style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {data.twitterUrl}
+                            </span>
+                        </div>
                     </a>
                 )}
                 {!data.linkedinUrl && !data.twitterUrl && (
@@ -2006,7 +2093,7 @@ export function OrganizationProfile() {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {data.employees.length === 0 ? (
-                    <p style={{ color: '#94a3b8', fontStyle: 'italic' }}>No employees added yet.</p>
+                    <p style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: 14 }}>No employees added yet.</p>
                 ) : (
                     data.employees.map((employee, index) => (
                         <div 
@@ -2015,31 +2102,30 @@ export function OrganizationProfile() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                padding: '16px',
-                                background: 'linear-gradient(135deg, #fef9e7, #fff7ed)',
-                                borderRadius: '8px',
-                                border: '1px solid #fed7aa',
-                                boxShadow: '0 1px 3px rgba(251, 146, 60, 0.1)'
+                                padding: '12px 14px',
+                                background: '#FFFFFF',
+                                borderRadius: 10,
+                                border: '1px solid #E5E7EB',
+                                boxShadow: '0 6px 18px rgba(15, 23, 42, 0.04)'
                             }}
                         >
                             <div style={{ flex: 1 }}>
-                                <p style={{ fontWeight: '600', color: '#0f172a', marginBottom: '4px', fontSize: '16px' }}>
+                                <p style={{ fontWeight: 600, color: '#111827', marginBottom: 2, fontSize: 14 }}>
                                     {employee.name}
                                 </p>
-                                <p style={{ fontSize: '14px', color: '#78350f', fontWeight: '500' }}>
+                                <p style={{ fontSize: 13, color: '#6B7280', fontWeight: 500 }}>
                                     {employee.role}
                                 </p>
                             </div>
                             {employee.parsedResumeData && (
                                 <span style={{
-                                    padding: '6px 14px',
-                                    background: 'linear-gradient(135deg, #dcfce7, #bbf7d0)',
-                                    color: '#166534',
-                                    fontSize: '12px',
-                                    fontWeight: '600',
-                                    borderRadius: '20px',
-                                    border: '1px solid #86efac',
-                                    boxShadow: '0 2px 4px rgba(22, 163, 74, 0.1)'
+                                    padding: '4px 10px',
+                                    background: '#ECFDF3',
+                                    color: '#15803D',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    borderRadius: 999,
+                                    border: '1px solid #BBF7D0'
                                 }}>
                                     ✓ Resume Parsed
                                 </span>
@@ -2079,88 +2165,182 @@ export function OrganizationProfile() {
                     from { transform: rotate(0deg); }
                     to { transform: rotate(360deg); }
                 }
-                @keyframes slideInLeft {
-                    from {
-                        transform: translateX(-100%);
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+
+                .org-header-inner {
+                    max-width: 1360px;
+                }
+
+                .org-content {
+                    max-width: 1360px;
+                }
+
+                .org-bento-grid {
+                    display: grid;
+                    grid-template-columns: repeat(12, minmax(0, 1fr));
+                    gap: 24px;
+                    margin-bottom: 32px;
+                }
+
+                .org-bento-company {
+                    grid-column: span 5;
+                }
+
+                .org-bento-credits {
+                    grid-column: span 3;
+                }
+
+                .org-bento-integrations {
+                    grid-column: span 4;
+                }
+
+                @media (max-width: 1024px) {
+                    .org-header-inner {
+                        padding: 12px 16px !important;
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 16px;
                     }
-                    to {
-                        transform: translateX(0);
+
+                    .org-content {
+                        padding: 20px 16px 32px !important;
+                    }
+
+                    .org-bento-company,
+                    .org-bento-people,
+                    .org-bento-integrations {
+                        grid-column: span 12;
                     }
                 }
-                @keyframes fadeIn {
-                    from {
-                        opacity: 0;
+
+                @media (max-width: 768px) {
+                    .org-bento-grid {
+                        grid-template-columns: 1fr;
                     }
-                    to {
-                        opacity: 1;
+
+                    .org-bento-company,
+                    .org-bento-credits,
+                    .org-bento-integrations {
+                        grid-column: span 12;
+                    }
+
+                    .org-content {
+                        padding: 16px 12px 28px !important;
                     }
                 }
             `}</style>
-            <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)', paddingBottom: '80px' }}>
-                {/* Header */}
-                <div style={{
-                    background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
-                    borderBottom: '1px solid #e2e8f0',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 20,
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                }}>
-                    <div style={{
-                        maxWidth: '1152px',
-                        margin: '0 auto',
-                        padding: '16px 24px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ 
-                                background: 'rgba(255, 255, 255, 0.2)', 
-                                borderRadius: '10px', 
-                                padding: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Building2 style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+            <div
+                style={{
+                    minHeight: '100vh',
+                    background: '#F5F7FA',
+                    color: '#111827'
+                }}
+            >
+                {/* Top shell / hero */}
+                <div
+                    style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        background: 'rgba(245, 247, 250, 0.92)',
+                        backdropFilter: 'blur(16px)',
+                        borderBottom: '1px solid #E5E7EB'
+                    }}
+                >
+                    <div
+                        className="org-header-inner"
+                        style={{
+                            margin: '0 auto',
+                            padding: '16px 32px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 24
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 12,
+                                    background: '#0052FF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 10px 25px rgba(0, 82, 255, 0.45)'
+                                }}
+                            >
+                                <Building2
+                                    style={{
+                                        width: 22,
+                                        height: 22,
+                                        color: '#FFFFFF'
+                                    }}
+                                />
                             </div>
                             <div>
-                                <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>Organization Profile</h1>
-                                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Manage your company information</p>
+                                <p
+                                    style={{
+                                        fontSize: 12,
+                                        letterSpacing: 2,
+                                        textTransform: 'uppercase',
+                                        fontWeight: 500,
+                                        color: '#6B7280',
+                                        margin: 0
+                                    }}
+                                >
+                                    Prism · Organization
+                                </p>
+                                <h1
+                                    style={{
+                                        fontSize: 22,
+                                        fontWeight: 700,
+                                        letterSpacing: 0.2,
+                                        margin: '4px 0 0',
+                                        color: '#111827'
+                                    }}
+                                >
+                                    Organization Profile
+                                </h1>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12
+                            }}
+                        >
                             {!isEditMode && isOwner ? (
                                 <button
                                     onClick={() => setIsEditMode(true)}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '10px 20px',
-                                        borderRadius: '8px',
-                                        fontWeight: '500',
-                                        color: '#ffffff',
-                                        background: editHovered ? '#1d4ed8' : '#2563eb',
+                                        gap: 8,
+                                        padding: '9px 18px',
+                                        borderRadius: 999,
+                                        fontWeight: 600,
+                                        fontSize: 13,
+                                        letterSpacing: 0.3,
+                                        textTransform: 'uppercase',
+                                        color: '#FFFFFF',
+                                        background: '#0052FF',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-                                        transition: 'all 0.15s ease',
-                                        transform: 'translateY(0)'
+                                        boxShadow: '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                        transition: 'background 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out',
+                                        transform: editHovered ? 'translateY(-1px)' : 'translateY(0)'
                                     }}
-                                    onMouseEnter={(e) => {
-                                        setEditHovered(true);
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        setEditHovered(false);
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
-                                    }}
+                                    onMouseEnter={() => setEditHovered(true)}
+                                    onMouseLeave={() => setEditHovered(false)}
                                 >
-                                    <Pencil style={{ width: '16px', height: '16px' }} />
+                                    <Pencil style={{ width: 14, height: 14 }} />
                                     Edit Profile
                                 </button>
                             ) : isOwner ? (
@@ -2170,50 +2350,45 @@ export function OrganizationProfile() {
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '10px 20px',
-                                        borderRadius: '8px',
-                                        fontWeight: '500',
-                                        color: '#ffffff',
-                                        background: loading ? '#16a34a' : (editHovered ? '#15803d' : '#16a34a'),
+                                        gap: 8,
+                                        padding: '9px 18px',
+                                        borderRadius: 999,
+                                        fontWeight: 600,
+                                        fontSize: 13,
+                                        letterSpacing: 0.3,
+                                        textTransform: 'uppercase',
+                                        color: '#FFFFFF',
+                                        background: loading ? '#16A34A' : '#059669',
                                         border: 'none',
                                         cursor: loading ? 'not-allowed' : 'pointer',
-                                        opacity: loading ? 0.5 : 1,
-                                        boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)',
-                                        transition: 'all 0.15s ease',
-                                        transform: 'translateY(0)'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!loading) {
-                                            setEditHovered(true);
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        setEditHovered(false);
-                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        opacity: loading ? 0.85 : 1,
+                                        boxShadow: '0 10px 25px rgba(5, 150, 105, 0.35)',
+                                        transition: 'background 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out'
                                     }}
                                 >
                                     {loading ? (
                                         <>
-                                            <div style={{
-                                                width: '16px',
-                                                height: '16px',
-                                                border: '2px solid white',
-                                                borderTop: '2px solid transparent',
-                                                borderRadius: '50%',
-                                                animation: 'spin 1s linear infinite'
-                                            }}></div>
-                                            Saving...
+                                            <div
+                                                style={{
+                                                    width: 16,
+                                                    height: 16,
+                                                    borderRadius: '50%',
+                                                    border: '2px solid rgba(255,255,255,0.6)',
+                                                    borderTopColor: 'transparent',
+                                                    animation: 'spin 800ms linear infinite'
+                                                }}
+                                            />
+                                            Saving
                                         </>
                                     ) : (
                                         <>
-                                            <Save style={{ width: '16px', height: '16px' }} />
+                                            <Save style={{ width: 14, height: 14 }} />
                                             Save Changes
                                         </>
                                     )}
                                 </button>
                             ) : null}
+
                             <button
                                 data-menu-button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -2223,19 +2398,17 @@ export function OrganizationProfile() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: '44px',
-                                    height: '44px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    color: '#ffffff',
-                                    background: menuHovered ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)',
-                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 999,
+                                    border: '1px solid #E5E7EB',
+                                    background: menuHovered ? '#EEF2FF' : '#FFFFFF',
                                     cursor: 'pointer',
-                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                    transition: 'all 0.15s ease'
+                                    transition: 'background 200ms ease-out, border-color 200ms ease-out',
+                                    boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)'
                                 }}
                             >
-                                <Menu style={{ width: '20px', height: '20px' }} />
+                                <Menu style={{ width: 18, height: 18, color: '#111827' }} />
                             </button>
                         </div>
                     </div>
@@ -2247,13 +2420,10 @@ export function OrganizationProfile() {
                         onClick={() => setIsSidebarOpen(false)}
                         style={{
                             position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.5)',
-                            zIndex: 999,
-                            animation: 'fadeIn 0.2s ease'
+                            inset: 0,
+                            background: 'rgba(15, 23, 42, 0.40)',
+                            zIndex: 30,
+                            animation: 'fadeIn 200ms ease-out'
                         }}
                     />
                 )}
@@ -2266,41 +2436,47 @@ export function OrganizationProfile() {
                         top: 0,
                         left: 0,
                         height: '100vh',
-                        width: '280px',
-                        background: '#ffffff',
-                        boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
-                        zIndex: 1000,
+                        width: 260,
+                        background: '#FFFFFF',
+                        boxShadow: '16px 0 45px rgba(15, 23, 42, 0.18)',
+                        zIndex: 40,
                         transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                        transition: 'transform 0.3s ease',
+                        transition: 'transform 220ms ease-out',
                         display: 'flex',
-                        flexDirection: 'column',
-                        overflowY: 'auto'
+                        flexDirection: 'column'
                     }}
                 >
                     {/* Sidebar Header */}
-                    <div style={{
-                        padding: '24px 20px',
-                        borderBottom: '1px solid #e2e8f0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: 'linear-gradient(to right, #f8fafc, #ffffff)'
-                    }}>
+                    <div
+                        style={{
+                            padding: '20px 20px 16px',
+                            borderBottom: '1px solid #E5E7EB',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
+                        }}
+                    >
                         <div>
-                            <h2 style={{
-                                fontSize: '18px',
-                                fontWeight: '700',
-                                color: '#0f172a',
-                                margin: 0
-                            }}>
+                            <p
+                                style={{
+                                    fontSize: 11,
+                                    letterSpacing: 1.8,
+                                    textTransform: 'uppercase',
+                                    color: '#9CA3AF',
+                                    fontWeight: 500,
+                                    margin: 0
+                                }}
+                            >
                                 Navigation
-                            </h2>
-                            <p style={{
-                                fontSize: '12px',
-                                color: '#64748b',
-                                margin: '4px 0 0 0'
-                            }}>
-                                Quick access menu
+                            </p>
+                            <p
+                                style={{
+                                    fontSize: 13,
+                                    color: '#4B5563',
+                                    margin: '4px 0 0'
+                                }}
+                            >
+                                Move across Prism
                             </p>
                         </div>
                         <button
@@ -2309,166 +2485,96 @@ export function OrganizationProfile() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: '#f1f5f9',
+                                width: 30,
+                                height: 30,
+                                borderRadius: 999,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB',
                                 cursor: 'pointer',
-                                transition: 'background 0.15s ease'
+                                transition: 'background 200ms ease-out, border-color 200ms ease-out'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
                         >
-                            <X style={{ width: '18px', height: '18px', color: '#64748b' }} />
+                            <X style={{ width: 16, height: 16, color: '#6B7280' }} />
                         </button>
                     </div>
 
                     {/* Sidebar Navigation */}
-                    <div style={{
-                        flex: 1,
-                        padding: '16px 0'
-                    }}>
-                        <button
-                            onClick={() => {
-                                navigate('/organization-profile');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <UserCircle style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Profile
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/organization-team');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <Users style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Team
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/organization-jobpost');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <Briefcase style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Post Job
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/manage-jobs');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <FileText style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Manage Jobs
-                        </button>
+                    <div
+                        style={{
+                            flex: 1,
+                            padding: '12px 8px'
+                        }}
+                    >
+                        {[
+                            {
+                                label: 'Profile',
+                                icon: UserCircle,
+                                href: '/organization-profile'
+                            },
+                            {
+                                label: 'Team',
+                                icon: Users,
+                                href: '/organization-team'
+                            },
+                            {
+                                label: 'Post Job',
+                                icon: Briefcase,
+                                href: '/organization-jobpost'
+                            },
+                            {
+                                label: 'Manage Jobs',
+                                icon: FileText,
+                                href: '/manage-jobs'
+                            }
+                        ].map((item) => {
+                            const isActive = window.location.pathname === item.href;
+                            return (
+                                <button
+                                    key={item.href}
+                                    onClick={() => {
+                                        navigate(item.href);
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-start',
+                                        gap: 10,
+                                        padding: '10px 14px',
+                                        margin: '2px 4px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: isActive ? '#EEF2FF' : 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        letterSpacing: 0.4,
+                                        textTransform: 'uppercase',
+                                        color: isActive ? '#111827' : '#4B5563',
+                                        transition: 'background 200ms ease-out, color 200ms ease-out'
+                                    }}
+                                >
+                                    <item.icon
+                                        style={{
+                                            width: 18,
+                                            height: 18,
+                                            color: isActive ? '#0052FF' : '#6B7280'
+                                        }}
+                                    />
+                                    {item.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Sidebar Footer with Logout */}
-                    <div style={{
-                        padding: '16px 0',
-                        borderTop: '1px solid #e2e8f0',
-                        marginTop: 'auto'
-                    }}>
+                    <div
+                        style={{
+                            borderTop: '1px solid #E5E7EB',
+                            padding: '12px 12px 18px'
+                        }}
+                    >
                         <button
                             onClick={() => {
                                 handleLogout();
@@ -2478,28 +2584,22 @@ export function OrganizationProfile() {
                                 width: '100%',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
+                                justifyContent: 'flex-start',
+                                gap: 10,
+                                padding: '10px 14px',
+                                borderRadius: 10,
                                 border: 'none',
                                 background: 'transparent',
                                 cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#dc2626',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#fef2f2';
-                                e.currentTarget.style.borderLeftColor = '#dc2626';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
+                                fontSize: 13,
+                                fontWeight: 500,
+                                letterSpacing: 0.4,
+                                textTransform: 'uppercase',
+                                color: '#B91C1C',
+                                transition: 'background 200ms ease-out'
                             }}
                         >
-                            <LogOut style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+                            <LogOut style={{ width: 18, height: 18, color: '#B91C1C' }} />
                             Logout
                         </button>
                     </div>
@@ -2507,92 +2607,361 @@ export function OrganizationProfile() {
 
                 {/* Message Toast */}
                 {message && (
-                    <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '16px 24px 0' }}>
-                        <div style={{
-                            padding: '16px 20px',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                            background: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
-                            color: message.type === 'success' ? '#166534' : '#991b1b',
-                            border: message.type === 'success' ? '1px solid #bbf7d0' : '1px solid #fecaca'
-                        }}>
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 72,
+                            right: 24,
+                            zIndex: 60,
+                            animation: 'fadeIn 200ms ease-out'
+                        }}
+                    >
+                        <div
+                            style={{
+                                maxWidth: 360,
+                                padding: '10px 12px',
+                                borderRadius: 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                boxShadow: '0 18px 45px rgba(15, 23, 42, 0.12)',
+                                background: message.type === 'success' ? '#ECFDF3' : '#FEF2F2',
+                                color: message.type === 'success' ? '#166534' : '#B91C1C',
+                                border: `1px solid ${
+                                    message.type === 'success' ? '#BBF7D0' : '#FCA5A5'
+                                }`
+                            }}
+                        >
                             {message.type === 'success' ? (
-                                <CheckCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+                                <CheckCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
                             ) : (
-                                <X style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+                                <X style={{ width: 16, height: 16, flexShrink: 0 }} />
                             )}
-                            <span style={{ fontWeight: '500' }}>{message.text}</span>
+                            <span
+                                style={{
+                                    fontWeight: 500,
+                                    fontSize: 13,
+                                    lineHeight: 1.4
+                                }}
+                            >
+                                {message.text}
+                            </span>
                             <button
                                 onClick={() => setMessage(null)}
                                 style={{
                                     marginLeft: 'auto',
-                                    background: 'rgba(0, 0, 0, 0.05)',
+                                    background: 'transparent',
                                     border: 'none',
-                                    borderRadius: '4px',
-                                    padding: '4px',
-                                    cursor: 'pointer',
-                                    transition: 'background 0.15s ease'
+                                    borderRadius: 999,
+                                    padding: 4,
+                                    cursor: 'pointer'
                                 }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.05)'}
                             >
-                                <X style={{ width: '16px', height: '16px' }} />
+                                <X style={{ width: 12, height: 12 }} />
                             </button>
                         </div>
                     </div>
                 )}
 
                 {/* Content */}
-                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 24px' }}>
+                <div
+                    className="org-content"
+                    style={{
+                        margin: '0 auto',
+                        padding: '24px 32px 40px'
+                    }}
+                >
+                    {/* Bento-style overview row */}
+                    <div
+                        className="org-bento-grid"
+                        style={{}}
+                    >
+                        {/* Org snapshot */}
+                        <div
+                            className="org-bento-company"
+                            style={{
+                                background: '#FFFFFF',
+                                borderRadius: 12,
+                                padding: 20,
+                                boxShadow: '0 14px 40px rgba(15, 23, 42, 0.08)',
+                                border: '1px solid #E5E7EB',
+                                minHeight: 120
+                            }}
+                        >
+                            <p
+                                style={{
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 1.4,
+                                    color: '#6B7280',
+                                    margin: 0
+                                }}
+                            >
+                                Company
+                            </p>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 14,
+                                    marginTop: 8
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        width: 48,
+                                        height: 48,
+                                        borderRadius: 999,
+                                        background: '#E5E7EB',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        overflow: 'hidden',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    {data.logoUrl ? (
+                                        <img
+                                            src={getStorageUrl(data.logoUrl)}
+                                            alt="Logo"
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'cover'
+                                            }}
+                                        />
+                                    ) : (
+                                        <Building2 style={{ width: 28, height: 28, color: '#9CA3AF' }} />
+                                    )}
+                                </div>
+                                <div>
+                                    <h2
+                                        style={{
+                                            margin: 0,
+                                            fontSize: 18,
+                                            fontWeight: 700,
+                                            color: '#111827'
+                                        }}
+                                    >
+                                        {data.companyName || 'Organization'}
+                                    </h2>
+                                    <p
+                                        style={{
+                                            fontSize: 13,
+                                            color: '#6B7280',
+                                            margin: '4px 0 0'
+                                        }}
+                                    >
+                                        {data.industry} · {data.companySize} · Since {data.foundedYear}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
 
+                        {/* Credits summary */}
+                        <div
+                            className="org-bento-credits"
+                            style={{
+                                background: '#FFFFFF',
+                                borderRadius: 12,
+                                padding: 20,
+                                boxShadow: '0 14px 40px rgba(15, 23, 42, 0.08)',
+                                border: '1px solid #E5E7EB',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                minHeight: 120
+                            }}
+                        >
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 12
+                                }}
+                            >
+                                <div>
+                                    <p
+                                        style={{
+                                            fontSize: 12,
+                                            fontWeight: 500,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: 1.4,
+                                            color: '#6B7280',
+                                            margin: 0
+                                        }}
+                                    >
+                                        Credits
+                                    </p>
+                                    <p
+                                        style={{
+                                            fontSize: 28,
+                                            fontWeight: 700,
+                                            margin: '8px 0 0',
+                                            color: '#0052FF',
+                                            fontFamily:
+                                                '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+                                        }}
+                                    >
+                                        {credits}
+                                    </p>
+                                </div>
+                                {isOwner && (
+                                    <button
+                                        onClick={() => setShowBuyCreditsModal(true)}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: 999,
+                                            border: '1px solid #0052FF',
+                                            background: '#0052FF',
+                                            color: '#FFFFFF',
+                                            fontSize: 11,
+                                            fontWeight: 500,
+                                            letterSpacing: 0.4,
+                                            textTransform: 'uppercase',
+                                            cursor: 'pointer',
+                                            whiteSpace: 'nowrap',
+                                            transition: 'background 200ms ease-out, border-color 200ms ease-out'
+                                        }}
+                                    >
+                                        Buy Credits
+                                    </button>
+                                )}
+                            </div>
+                            <p
+                                style={{
+                                    marginTop: 8,
+                                    fontSize: 12,
+                                    color: '#6B7280'
+                                }}
+                            >
+                                Available credits
+                            </p>
+                        </div>
+
+                        {/* AI / Integration status */}
+                        <div
+                            className="org-bento-integrations"
+                            style={{
+                                background: '#FFFFFF',
+                                borderRadius: 12,
+                                padding: 20,
+                                boxShadow: '0 14px 40px rgba(15, 23, 42, 0.08)',
+                                border: '1px solid #E5E7EB',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8,
+                                minHeight: 120
+                            }}
+                        >
+                            <p
+                                style={{
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 1.4,
+                                    color: '#6B7280',
+                                    margin: 0
+                                }}
+                            >
+                                Integrations
+                            </p>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    gap: 16,
+                                    fontSize: 12
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}
+                                >
+                                    <Linkedin
+                                        style={{
+                                            width: 16,
+                                            height: 16,
+                                            color: '#0A66C2'
+                                        }}
+                                    />
+                                    <span
+                                        style={{
+                                            padding: '3px 8px',
+                                            borderRadius: 999,
+                                            background:
+                                                linkedInConnected === true
+                                                    ? '#ECFDF3'
+                                                    : linkedInConnected === false
+                                                    ? '#F3F4F6'
+                                                    : '#F9FAFB',
+                                            color:
+                                                linkedInConnected === true
+                                                    ? '#15803D'
+                                                    : '#4B5563',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        {linkedInConnected === true
+                                            ? 'LinkedIn Connected'
+                                            : 'LinkedIn Not Connected'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    gap: 16,
+                                    fontSize: 12
+                                }}
+                            >
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}
+                                >
+                                    <Cloud
+                                        style={{
+                                            width: 16,
+                                            height: 16,
+                                            color: '#00A1E0'
+                                        }}
+                                    />
+                                    <span
+                                        style={{
+                                            padding: '3px 8px',
+                                            borderRadius: 999,
+                                            background:
+                                                salesforceConnected === true
+                                                    ? '#ECFDF3'
+                                                    : salesforceConnected === false
+                                                    ? '#F3F4F6'
+                                                    : '#F9FAFB',
+                                            color:
+                                                salesforceConnected === true
+                                                    ? '#15803D'
+                                                    : '#4B5563',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        {salesforceConnected === true
+                                            ? 'Salesforce Connected'
+                                            : 'Salesforce Not Connected'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main cards */}
                     <SectionCard>
                         {renderBasicInfo()}
-                    </SectionCard>
-
-                    {/* Credits Section - Visible to all org members */}
-                    <SectionCard title="Credits" icon={Briefcase}>
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '16px',
-                            padding: '16px',
-                            background: 'linear-gradient(135deg, #dbeafe, #e0f2fe)',
-                            borderRadius: '8px',
-                            border: '1px solid #bfdbfe'
-                        }}>
-                            <div>
-                                <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '8px' }}>
-                                    Credits remaining for job postings
-                                </p>
-                                <p style={{ fontSize: '36px', fontWeight: '700', color: '#2563eb', margin: 0 }}>
-                                    {credits}
-                                </p>
-                            </div>
-                            
-                            {isOwner && (
-                                <button
-                                    onClick={() => setShowBuyCreditsModal(true)}
-                                    style={{
-                                        padding: '10px 20px',
-                                        background: '#2563eb',
-                                        color: '#ffffff',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: '500',
-                                        cursor: 'pointer',
-                                        transition: 'background 0.15s ease',
-                                        fontSize: '14px'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = '#1d4ed8'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = '#2563eb'}
-                                >
-                                    Buy Credits
-                                </button>
-                            )}
-                        </div>
                     </SectionCard>
 
                     <SectionCard title="About Company" icon={FileText}>
@@ -2605,130 +2974,174 @@ export function OrganizationProfile() {
 
                     {/* LinkedIn Connect - owner only, below Social Links */}
                     {isOwner && (
-                        <div style={{
-                            padding: '16px',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            background: '#f8fafc',
-                            marginTop: '8px',
-                            marginBottom: '16px'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Linkedin style={{ width: '20px', height: '20px', color: '#0a66c2' }} />
-                                    <span style={{ fontWeight: '600', color: '#334155' }}>LinkedIn Connect</span>
-                                    <span style={{
-                                        padding: '4px 10px',
-                                        borderRadius: '20px',
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        background: linkedInConnected === true ? '#dcfce7' : linkedInConnected === false ? '#fee2e2' : '#e2e8f0',
-                                        color: linkedInConnected === true ? '#166534' : linkedInConnected === false ? '#991b1b' : '#64748b'
-                                    }}>
-                                        {linkedInConnected === true ? 'Connected' : linkedInConnected === false ? 'Not connected' : '…'}
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                                gap: 16,
+                                marginBottom: 16
+                            }}
+                        >
+                            <div
+                                style={{
+                                    padding: '14px 16px',
+                                    borderRadius: 10,
+                                    border: '1px solid #E5E7EB',
+                                    background: '#FFFFFF',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Linkedin style={{ width: 18, height: 18, color: '#0A66C2' }} />
+                                    <span style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>
+                                        LinkedIn Connect
                                     </span>
                                 </div>
-                                {linkedInConnected === false && (
-                                    <button
-                                        type="button"
-                                        disabled={linkedInConnecting}
-                                        onClick={async () => {
-                                            setLinkedInConnecting(true);
-                                            try {
-                                                const res = await authenticatedFetch(
-                                                    API_ENDPOINTS.LINKEDIN_CONNECT,
-                                                    { method: 'GET' },
-                                                    navigate
-                                                );
-                                                if (res?.ok) {
-                                                    const data = await res.json();
-                                                    if (data.authorization_url) {
-                                                        window.location.href = data.authorization_url;
-                                                    }
-                                                }
-                                            } finally {
-                                                setLinkedInConnecting(false);
-                                            }
-                                        }}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    <span
                                         style={{
-                                            padding: '8px 16px',
-                                            background: '#0a66c2',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            fontWeight: '500',
-                                            cursor: linkedInConnecting ? 'not-allowed' : 'pointer',
-                                            fontSize: '14px'
+                                            padding: '3px 10px',
+                                            borderRadius: 999,
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            background:
+                                                linkedInConnected === true
+                                                    ? '#ECFDF3'
+                                                    : linkedInConnected === false
+                                                    ? '#F3F4F6'
+                                                    : '#F9FAFB',
+                                            color:
+                                                linkedInConnected === true
+                                                    ? '#15803D'
+                                                    : '#4B5563'
                                         }}
                                     >
-                                        {linkedInConnecting ? 'Connecting…' : 'Connect LinkedIn'}
-                                    </button>
-                                )}
+                                        {linkedInConnected === true
+                                            ? 'Connected'
+                                            : linkedInConnected === false
+                                            ? 'Not connected'
+                                            : 'Checking…'}
+                                    </span>
+                                    {linkedInConnected === false && (
+                                        <button
+                                            type="button"
+                                            disabled={linkedInConnecting}
+                                            onClick={async () => {
+                                                setLinkedInConnecting(true);
+                                                try {
+                                                    const res = await authenticatedFetch(
+                                                        API_ENDPOINTS.LINKEDIN_CONNECT,
+                                                        { method: 'GET' },
+                                                        navigate
+                                                    );
+                                                    if (res?.ok) {
+                                                        const data = await res.json();
+                                                        if (data.authorization_url) {
+                                                            window.location.href = data.authorization_url;
+                                                        }
+                                                    }
+                                                } finally {
+                                                    setLinkedInConnecting(false);
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '6px 10px',
+                                                borderRadius: 999,
+                                                border: '1px solid #0A66C2',
+                                                background: '#0A66C2',
+                                                color: '#FFFFFF',
+                                                fontSize: 11,
+                                                fontWeight: 500,
+                                                cursor: linkedInConnecting ? 'not-allowed' : 'pointer'
+                                            }}
+                                        >
+                                            {linkedInConnecting ? 'Connecting…' : 'Connect'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Salesforce Connect - owner only, below LinkedIn Connect */}
-                    {isOwner && (
-                        <div style={{
-                            padding: '16px',
-                            borderRadius: '8px',
-                            border: '1px solid #e2e8f0',
-                            background: '#f8fafc',
-                            marginTop: '8px',
-                            marginBottom: '16px'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Cloud style={{ width: '20px', height: '20px', color: '#00A1E0' }} />
-                                    <span style={{ fontWeight: '600', color: '#334155' }}>Salesforce Connect</span>
-                                    <span style={{
-                                        padding: '4px 10px',
-                                        borderRadius: '20px',
-                                        fontSize: '12px',
-                                        fontWeight: '600',
-                                        background: salesforceConnected === true ? '#dcfce7' : salesforceConnected === false ? '#fee2e2' : '#e2e8f0',
-                                        color: salesforceConnected === true ? '#166534' : salesforceConnected === false ? '#991b1b' : '#64748b'
-                                    }}>
-                                        {salesforceConnected === true ? 'Connected' : salesforceConnected === false ? 'Not connected' : '…'}
+                            <div
+                                style={{
+                                    padding: '14px 16px',
+                                    borderRadius: 10,
+                                    border: '1px solid #E5E7EB',
+                                    background: '#FFFFFF',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Cloud style={{ width: 18, height: 18, color: '#00A1E0' }} />
+                                    <span style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>
+                                        Salesforce Connect
                                     </span>
                                 </div>
-                                {salesforceConnected === false && (
-                                    <button
-                                        type="button"
-                                        disabled={salesforceConnecting}
-                                        onClick={async () => {
-                                            setSalesforceConnecting(true);
-                                            try {
-                                                const res = await authenticatedFetch(
-                                                    API_ENDPOINTS.SALESFORCE_CONNECT,
-                                                    { method: 'GET' },
-                                                    navigate
-                                                );
-                                                if (res?.ok) {
-                                                    const data = await res.json();
-                                                    if (data.authorization_url) {
-                                                        window.location.href = data.authorization_url;
-                                                    }
-                                                }
-                                            } finally {
-                                                setSalesforceConnecting(false);
-                                            }
-                                        }}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                    <span
                                         style={{
-                                            padding: '8px 16px',
-                                            background: '#00A1E0',
-                                            color: '#fff',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            fontWeight: '500',
-                                            cursor: salesforceConnecting ? 'not-allowed' : 'pointer',
-                                            fontSize: '14px'
+                                            padding: '3px 10px',
+                                            borderRadius: 999,
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            background:
+                                                salesforceConnected === true
+                                                    ? '#ECFDF3'
+                                                    : salesforceConnected === false
+                                                    ? '#F3F4F6'
+                                                    : '#F9FAFB',
+                                            color:
+                                                salesforceConnected === true
+                                                    ? '#15803D'
+                                                    : '#4B5563'
                                         }}
                                     >
-                                        {salesforceConnecting ? 'Connecting…' : 'Connect Salesforce'}
-                                    </button>
-                                )}
+                                        {salesforceConnected === true
+                                            ? 'Connected'
+                                            : salesforceConnected === false
+                                            ? 'Not connected'
+                                            : 'Checking…'}
+                                    </span>
+                                    {salesforceConnected === false && (
+                                        <button
+                                            type="button"
+                                            disabled={salesforceConnecting}
+                                            onClick={async () => {
+                                                setSalesforceConnecting(true);
+                                                try {
+                                                    const res = await authenticatedFetch(
+                                                        API_ENDPOINTS.SALESFORCE_CONNECT,
+                                                        { method: 'GET' },
+                                                        navigate
+                                                    );
+                                                    if (res?.ok) {
+                                                        const data = await res.json();
+                                                        if (data.authorization_url) {
+                                                            window.location.href = data.authorization_url;
+                                                        }
+                                                    }
+                                                } finally {
+                                                    setSalesforceConnecting(false);
+                                                }
+                                            }}
+                                            style={{
+                                                padding: '6px 10px',
+                                                borderRadius: 999,
+                                                border: '1px solid #00A1E0',
+                                                background: '#00A1E0',
+                                                color: '#FFFFFF',
+                                                fontSize: 11,
+                                                fontWeight: 500,
+                                                cursor: salesforceConnecting ? 'not-allowed' : 'pointer'
+                                            }}
+                                        >
+                                            {salesforceConnecting ? 'Connecting…' : 'Connect'}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -2804,12 +3217,12 @@ export function OrganizationProfile() {
                                 Refresh
                             </button>
                 </div>
-                        {paymentHistory.length === 0 ? (
+                                {paymentHistory.length === 0 ? (
                             <p style={{
                                 color: '#94a3b8',
                                 fontStyle: 'italic',
                                 textAlign: 'center',
-                                padding: '20px'
+                                padding: '12px'
                             }}>
                                 No transactions yet. Purchase credits to see your transaction history here.
                             </p>
@@ -2817,7 +3230,7 @@ export function OrganizationProfile() {
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '12px'
+                                gap: '8px'
                             }}>
                                 {paymentHistory.map((transaction) => {
                                     const date = new Date(transaction.created_at);
@@ -2833,13 +3246,14 @@ export function OrganizationProfile() {
                                         <div
                                             key={transaction.id}
                                             style={{
-                                                padding: '16px',
-                                                background: '#f8fafc',
-                                                borderRadius: '8px',
-                                                border: '1px solid #e2e8f0',
+                                                padding: '10px 12px',
+                                                background: '#f9fafb',
+                                                borderRadius: 8,
+                                                border: '1px solid #e5e7eb',
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
-                                                alignItems: 'center',
+                                                alignItems: 'flex-start',
+                                                gap: 12,
                                                 transition: 'background 0.15s ease'
                                             }}
                                             onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
@@ -2849,20 +3263,20 @@ export function OrganizationProfile() {
                                                 <div style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '12px',
-                                                    marginBottom: '8px'
+                                                    gap: 10,
+                                                    marginBottom: 4
                                                 }}>
                                                     {transaction.status === 'completed' ? (
                                                         <CheckCircle style={{
-                                                            width: '20px',
-                                                            height: '20px',
+                                                            width: 16,
+                                                            height: 16,
                                                             color: '#16a34a',
                                                             flexShrink: 0
                                                         }} />
                                                     ) : (
                                                         <div style={{
-                                                            width: '20px',
-                                                            height: '20px',
+                                                            width: 16,
+                                                            height: 16,
                                                             borderRadius: '50%',
                                                             background: transaction.status === 'created' ? '#fbbf24' : '#ef4444',
                                                             flexShrink: 0,
@@ -2871,8 +3285,8 @@ export function OrganizationProfile() {
                                                             justifyContent: 'center'
                                                         }}>
                                                             <div style={{
-                                                                width: '8px',
-                                                                height: '8px',
+                                                                width: 6,
+                                                                height: 6,
                                                                 borderRadius: '50%',
                                                                 background: '#ffffff'
                                                             }} />
@@ -2882,11 +3296,11 @@ export function OrganizationProfile() {
                                                         <div style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
-                                                            gap: '8px'
+                                                            gap: 6
                                                         }}>
                                                             <p style={{
-                                                                fontSize: '16px',
-                                                                fontWeight: '600',
+                                                                fontSize: 14,
+                                                                fontWeight: 600,
                                                                 color: '#0f172a',
                                                                 margin: 0
                                                             }}>
@@ -2907,9 +3321,9 @@ export function OrganizationProfile() {
                                                             </span>
                                                         </div>
                                                         <p style={{
-                                                            fontSize: '14px',
+                                                            fontSize: 12,
                                                             color: '#64748b',
-                                                            margin: '4px 0 0 0'
+                                                            margin: '2px 0 0 0'
                                                         }}>
                                                             {formattedDate}
                                                         </p>
@@ -2918,20 +3332,20 @@ export function OrganizationProfile() {
                                             </div>
                                             <div style={{
                                                 textAlign: 'right',
-                                                minWidth: '120px'
+                                                minWidth: 110
                                             }}>
                                                 <p style={{
-                                                    fontSize: '18px',
-                                                    fontWeight: '700',
+                                                    fontSize: 14,
+                                                    fontWeight: 600,
                                                     color: '#16a34a',
-                                                    margin: '0 0 4px 0'
+                                                    margin: '0 0 2px 0'
                                                 }}>
                                                     ${transaction.amount.toFixed(2)} {transaction.currency}
                                                 </p>
                                                 <p style={{
-                                                    fontSize: '14px',
+                                                    fontSize: 12,
                                                     color: '#2563eb',
-                                                    fontWeight: '600',
+                                                    fontWeight: 500,
                                                     margin: 0
                                                 }}>
                                                     +{transaction.num_credits} credit{transaction.num_credits !== 1 ? 's' : ''}
@@ -2991,7 +3405,7 @@ export function OrganizationProfile() {
                             color: '#64748b',
                             marginBottom: '20px'
                         }}>
-                            1 credit = $10 USD
+                            1 credit = ₹10
                         </p>
                         
                         <label style={{
@@ -3034,7 +3448,7 @@ export function OrganizationProfile() {
                                 color: '#0f172a',
                                 margin: 0
                             }}>
-                                Total: ${numCreditsToBuy * 10} USD
+                                Total: ₹{numCreditsToBuy * 10}
                             </p>
                         </div>
                         

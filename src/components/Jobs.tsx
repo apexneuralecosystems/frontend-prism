@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase, MapPin, Users, Calendar, DollarSign, FileText,
+    Briefcase, MapPin, Users, Calendar, IndianRupee, FileText,
     CheckCircle, AlertCircle, UserCheck, LogOut, Building2, X, Menu, UserCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -77,57 +77,71 @@ const JobCard = ({
 
     const getJobTypeColor = (type: string) => {
         switch (type) {
-            case 'full_time': return { bg: 'linear-gradient(to bottom right, #dbeafe, #bfdbfe)', color: '#1e40af', border: '#93c5fd' };
-            case 'internship': return { bg: 'linear-gradient(to bottom right, #dcfce7, #bbf7d0)', color: '#15803d', border: '#86efac' };
-            case 'unpaid': return { bg: 'linear-gradient(to bottom right, #f3e8ff, #e9d5ff)', color: '#6b21a8', border: '#d8b4fe' };
-            default: return { bg: 'linear-gradient(to bottom right, #f1f5f9, #e2e8f0)', color: '#475569', border: '#cbd5e1' };
+            case 'full_time':
+                return { bg: '#EEF2FF', color: '#1D4ED8', border: '#C7D2FE' };
+            case 'internship':
+                return { bg: '#ECFDF3', color: '#15803D', border: '#BBF7D0' };
+            case 'unpaid':
+                return { bg: '#F3E8FF', color: '#6B21A8', border: '#E9D5FF' };
+            default:
+                return { bg: '#F1F5F9', color: '#475569', border: '#CBD5E1' };
         }
     };
 
     const typeColors = getJobTypeColor(job.job_type);
 
     return (
-        <div style={{ 
-            background: '#ffffff', 
-            borderRadius: '12px', 
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)', 
-            border: '1px solid #e2e8f0',
-            padding: '24px',
-            transition: 'all 0.2s ease-in-out',
-            transform: 'translateY(0)'
-        }}
-        onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-4px)';
-            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.1)';
-        }}
-        onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
-        }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>{job.role}</h3>
-                    <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '15px', fontWeight: '500' }}>{job.company.name}</p>
-                    <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>{job.company.email}</p>
+        <div
+            style={{
+                background: '#FFFFFF',
+                borderRadius: 12,
+                boxShadow: '0 14px 40px rgba(15, 23, 42, 0.08)',
+                border: '1px solid #E2E8F0',
+                padding: 20,
+                transition: 'transform 0.2s ease-out, box-shadow 0.2s ease-out',
+                transform: 'translateY(0)'
+            }}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 18px 45px rgba(15, 23, 42, 0.12)';
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 14px 40px rgba(15, 23, 42, 0.08)';
+            }}
+        >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, gap: 16 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 style={{ fontSize: 18, fontWeight: 600, color: '#111827', margin: '0 0 4px 0' }}>{job.role}</h3>
+                    <p style={{ color: '#4B5563', margin: '0 0 2px 0', fontSize: 14, fontWeight: 500 }}>
+                        {job.company.name}
+                    </p>
+                    <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {job.company.email}
+                    </p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <span style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        padding: '6px 14px', 
-                        borderRadius: '20px', 
-                        fontSize: '12px', 
-                        fontWeight: '600', 
-                        background: typeColors.bg,
-                        color: typeColors.color,
-                        border: `1px solid ${typeColors.border}`
-                    }}>
+                    <span
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '4px 10px',
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: typeColors.bg,
+                            color: typeColors.color,
+                            border: `1px solid ${typeColors.border}`,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5
+                        }}
+                    >
                         {getJobTypeLabel(job.job_type)}
                     </span>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <MapPin style={{ width: '16px', height: '16px', color: '#64748b' }} />
                     <span style={{ fontSize: '14px', color: '#475569' }}>{job.location}</span>
@@ -141,26 +155,26 @@ const JobCard = ({
                     <span style={{ fontSize: '14px', color: '#475569' }}>Apply by: {formatDate(job.application_close_date)}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <DollarSign style={{ width: '16px', height: '16px', color: '#64748b' }} />
-                    <span style={{ fontSize: '14px', color: '#475569', fontWeight: '600' }}>{formatPackageLpa(job)}</span>
+                    <IndianRupee style={{ width: 16, height: 16, color: '#64748b' }} />
+                    <span style={{ fontSize: 14, color: '#475569', fontWeight: 600 }}>{formatPackageLpa(job)}</span>
                 </div>
             </div>
 
             {job.notes && (
-                <div style={{ marginBottom: '16px', padding: '12px', background: 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <p style={{ fontSize: '13px', color: '#475569', margin: 0, lineHeight: '1.5' }}>{job.notes}</p>
+                <div style={{ marginBottom: 12, padding: 12, background: '#F9FAFB', borderRadius: 8, border: '1px solid #E5E7EB' }}>
+                    <p style={{ fontSize: 13, color: '#475569', margin: 0, lineHeight: 1.6 }}>{job.notes}</p>
                 </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTop: '1px solid #E5E7EB', flexWrap: 'wrap', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <FileText style={{ width: '16px', height: '16px', color: '#64748b' }} />
                     <a
                         href={getStorageUrl(job.file_path)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ 
-                            fontSize: '14px', 
+                        style={{
+                            fontSize: 14,
                             color: '#2563eb',
                             textDecoration: 'none',
                             fontWeight: '500',
@@ -173,8 +187,8 @@ const JobCard = ({
                     </a>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ fontSize: 12, color: '#94a3b8' }}>
                         {applicationStatus ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                 Status: <span style={{ fontWeight: '600', color: '#2563eb', textTransform: 'capitalize' }}>{applicationStatus}</span>
@@ -187,29 +201,29 @@ const JobCard = ({
                     {(showMoreOnly && onShowMore) ? (
                         <button
                             onClick={() => onShowMore(job.job_id)}
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px', 
-                                padding: '10px 20px',
-                                borderRadius: '8px',
-                                fontWeight: '500',
-                                fontSize: '14px',
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '9px 18px',
+                                borderRadius: 999,
+                                fontWeight: 600,
+                                fontSize: 13,
                                 border: 'none',
                                 cursor: 'pointer',
-                                background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
+                                background: '#0052FF',
                                 color: '#ffffff',
-                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-                                transition: 'all 0.15s ease',
+                                boxShadow: '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                transition: 'background 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out',
                                 transform: 'translateY(0)'
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.4)';
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 82, 255, 0.40)';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                                e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 82, 255, 0.35)';
                             }}
                         >
                             Show More
@@ -218,32 +232,34 @@ const JobCard = ({
                         <button
                             onClick={() => onApply?.(job.job_id)}
                             disabled={isApplied || isProcessing}
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px', 
-                                padding: '10px 20px',
-                                borderRadius: '8px',
-                                fontWeight: '500',
-                                fontSize: '14px',
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '9px 18px',
+                                borderRadius: 999,
+                                fontWeight: 600,
+                                fontSize: 13,
                                 border: 'none',
                                 cursor: (isApplied || isProcessing) ? 'not-allowed' : 'pointer',
-                                background: (isApplied || isProcessing) ? 'linear-gradient(to bottom right, #d1fae5, #a7f3d0)' : 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
-                                color: (isApplied || isProcessing) ? '#15803d' : '#ffffff',
-                                boxShadow: (isApplied || isProcessing) ? '0 2px 8px rgba(34, 197, 94, 0.2)' : '0 4px 12px rgba(37, 99, 235, 0.3)',
-                                transition: 'all 0.15s ease',
+                                background: (isApplied || isProcessing) ? '#ECFDF3' : '#0052FF',
+                                color: (isApplied || isProcessing) ? '#15803D' : '#ffffff',
+                                boxShadow: (isApplied || isProcessing)
+                                    ? '0 4px 12px rgba(22, 163, 74, 0.25)'
+                                    : '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                transition: 'background 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out',
                                 transform: 'translateY(0)'
                             }}
                             onMouseEnter={(e) => {
                                 if (!isApplied && !isProcessing) {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.4)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 82, 255, 0.40)';
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!isApplied && !isProcessing) {
                                     e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+                                    e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 82, 255, 0.35)';
                                 }
                             }}
                         >
@@ -375,18 +391,36 @@ export function Jobs() {
 
     if (loading) {
         return (
-            <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #e0f2fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+                style={{
+                    minHeight: '100vh',
+                    background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ 
-                        width: '48px', 
-                        height: '48px', 
-                        border: '4px solid #2563eb', 
-                        borderTop: '4px solid transparent', 
-                        borderRadius: '50%', 
-                        animation: 'spin 1s linear infinite',
-                        margin: '0 auto 16px'
-                    }}></div>
-                    <p style={{ color: '#475569', fontSize: '16px', fontWeight: '500' }}>Loading applications...</p>
+                    <div
+                        style={{
+                            width: 56,
+                            height: 56,
+                            border: '5px solid #0052FF',
+                            borderTop: '5px solid transparent',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            margin: '0 auto 16px'
+                        }}
+                    />
+                    <p
+                        style={{
+                            color: '#6B7280',
+                            fontSize: 14,
+                            fontWeight: 500
+                        }}
+                    >
+                        Loading applications...
+                    </p>
                 </div>
             </div>
         );
@@ -418,39 +452,69 @@ export function Jobs() {
             `}</style>
             <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)', paddingBottom: '80px' }}>
                 {/* Header */}
-                <div style={{ 
-                    background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
-                    borderBottom: '1px solid #e2e8f0',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 20,
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                }}>
-                    <div style={{ 
-                        maxWidth: '1152px', 
-                        margin: '0 auto', 
-                        padding: '16px 24px', 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ 
-                                background: 'rgba(255, 255, 255, 0.2)', 
-                                borderRadius: '10px', 
-                                padding: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Briefcase style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                <div
+                    style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        background: 'rgba(245, 247, 250, 0.92)',
+                        backdropFilter: 'blur(16px)',
+                        borderBottom: '1px solid #E5E7EB'
+                    }}
+                >
+                    <div
+                        style={{
+                            maxWidth: 1360,
+                            margin: '0 auto',
+                            padding: '16px 32px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 24
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 12,
+                                    background: '#0052FF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 10px 25px rgba(0, 82, 255, 0.45)'
+                                }}
+                            >
+                                <Briefcase style={{ width: 22, height: 22, color: '#ffffff' }} />
                             </div>
                             <div>
-                                <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>My Applications</h1>
-                                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Track your job applications</p>
+                                <p
+                                    style={{
+                                        fontSize: 12,
+                                        letterSpacing: 2,
+                                        textTransform: 'uppercase',
+                                        fontWeight: 500,
+                                        color: '#6B7280',
+                                        margin: 0
+                                    }}
+                                >
+                                    Prism · Candidate
+                                </p>
+                                <h1
+                                    style={{
+                                        fontSize: 22,
+                                        fontWeight: 700,
+                                        color: '#111827',
+                                        margin: '4px 0 0',
+                                        lineHeight: 1.2
+                                    }}
+                                >
+                                    My Applications
+                                </h1>
                             </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <button
                                 data-menu-button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -458,21 +522,21 @@ export function Jobs() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: '44px',
-                                    height: '44px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    color: '#ffffff',
-                                    background: menuHovered ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)',
-                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 999,
+                                    fontWeight: 500,
+                                    color: '#111827',
+                                    background: menuHovered ? '#EEF2FF' : '#FFFFFF',
+                                    border: '1px solid #E5E7EB',
                                     cursor: 'pointer',
-                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                    transition: 'all 0.15s ease'
+                                    boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)',
+                                    transition: 'background 200ms ease-out, border-color 200ms ease-out'
                                 }}
                                 onMouseEnter={() => setMenuHovered(true)}
                                 onMouseLeave={() => setMenuHovered(false)}
                             >
-                                <Menu style={{ width: '20px', height: '20px' }} />
+                                <Menu style={{ width: 18, height: 18 }} />
                             </button>
                         </div>
                     </div>
@@ -488,8 +552,8 @@ export function Jobs() {
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.5)',
-                            zIndex: 999,
+                            background: 'rgba(15, 23, 42, 0.40)',
+                            zIndex: 30,
                             animation: 'fadeIn 0.2s ease'
                         }}
                     />
@@ -503,12 +567,12 @@ export function Jobs() {
                         top: 0,
                         left: 0,
                         height: '100vh',
-                        width: '280px',
+                        width: 260,
                         background: '#ffffff',
-                        boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
-                        zIndex: 1000,
+                        boxShadow: '16px 0 45px rgba(15, 23, 42, 0.18)',
+                        zIndex: 40,
                         transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                        transition: 'transform 0.3s ease',
+                        transition: 'transform 0.22s ease-out',
                         display: 'flex',
                         flexDirection: 'column',
                         overflowY: 'auto'
@@ -516,28 +580,30 @@ export function Jobs() {
                 >
                     {/* Sidebar Header */}
                     <div style={{
-                        padding: '24px 20px',
+                        padding: '20px 20px 16px',
                         borderBottom: '1px solid #e2e8f0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+                        background: '#ffffff'
                     }}>
                         <div>
-                            <h2 style={{
-                                fontSize: '18px',
-                                fontWeight: '700',
-                                color: '#0f172a',
+                            <p style={{
+                                fontSize: 11,
+                                letterSpacing: 1.8,
+                                textTransform: 'uppercase',
+                                color: '#9CA3AF',
+                                fontWeight: 500,
                                 margin: 0
                             }}>
                                 Navigation
-                            </h2>
+                            </p>
                             <p style={{
-                                fontSize: '12px',
-                                color: '#64748b',
+                                fontSize: 13,
+                                color: '#4B5563',
                                 margin: '4px 0 0 0'
                             }}>
-                                Quick access menu
+                                Move across Prism
                             </p>
                         </div>
                         <button
@@ -546,97 +612,80 @@ export function Jobs() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: '#f1f5f9',
+                                width: 30,
+                                height: 30,
+                                borderRadius: 999,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB',
                                 cursor: 'pointer',
                                 transition: 'background 0.15s ease'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
                         >
-                            <X style={{ width: '18px', height: '18px', color: '#64748b' }} />
+                            <X style={{ width: 16, height: 16, color: '#64748b' }} />
                         </button>
                     </div>
 
                     {/* Sidebar Navigation */}
                     <div style={{
                         flex: 1,
-                        padding: '16px 0'
+                        padding: '12px 8px'
                     }}>
-                        <button
-                            onClick={() => {
-                                navigate('/user-profile');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <UserCircle style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Profile
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/jobs');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <Briefcase style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Jobs
-                        </button>
+                        {[
+                            {
+                                label: 'Profile',
+                                icon: UserCircle,
+                                href: '/user-profile'
+                            },
+                            {
+                                label: 'Jobs',
+                                icon: Briefcase,
+                                href: '/jobs'
+                            }
+                        ].map((item) => {
+                            const isActive = window.location.pathname === item.href;
+                            return (
+                                <button
+                                    key={item.href}
+                                    onClick={() => {
+                                        navigate(item.href);
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-start',
+                                        gap: 10,
+                                        padding: '10px 14px',
+                                        margin: '2px 4px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: isActive ? '#EEF2FF' : 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        letterSpacing: 0.4,
+                                        textTransform: 'uppercase',
+                                        color: isActive ? '#111827' : '#4B5563',
+                                        transition: 'background 200ms ease-out, color 200ms ease-out'
+                                    }}
+                                >
+                                    <item.icon
+                                        style={{
+                                            width: 18,
+                                            height: 18,
+                                            color: isActive ? '#0052FF' : '#6B7280'
+                                        }}
+                                    />
+                                    {item.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Sidebar Footer with Logout */}
                     <div style={{
-                        padding: '16px 0',
+                        padding: '12px 12px 18px',
                         borderTop: '1px solid #e2e8f0',
                         marginTop: 'auto'
                     }}>
@@ -649,28 +698,22 @@ export function Jobs() {
                                 width: '100%',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
+                                justifyContent: 'flex-start',
+                                gap: 10,
+                                padding: '10px 14px',
+                                borderRadius: 10,
                                 border: 'none',
                                 background: 'transparent',
                                 cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                letterSpacing: 0.4,
+                                textTransform: 'uppercase',
                                 color: '#dc2626',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#fef2f2';
-                                e.currentTarget.style.borderLeftColor = '#dc2626';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
+                                transition: 'background 0.15s ease'
                             }}
                         >
-                            <LogOut style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+                            <LogOut style={{ width: 18, height: 18, color: '#dc2626' }} />
                             Logout
                         </button>
                     </div>
@@ -678,49 +721,54 @@ export function Jobs() {
 
             {/* Message Toast */}
             {message && (
-                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '16px 24px 0' }}>
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 72,
+                        right: 24,
+                        zIndex: 60,
+                        animation: 'fadeIn 0.2s ease'
+                    }}
+                >
                     <div style={{ 
-                        padding: '16px 20px',
-                        borderRadius: '12px',
+                        maxWidth: 360,
+                        padding: '10px 12px',
+                        borderRadius: 12,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        background: message.type === 'success' ? 'linear-gradient(to right, #d1fae5, #a7f3d0)' : 'linear-gradient(to right, #fee2e2, #fecaca)',
-                        border: `1px solid ${message.type === 'success' ? '#86efac' : '#fca5a5'}`,
-                        color: message.type === 'success' ? '#065f46' : '#991b1b',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                        fontWeight: '500',
-                        animation: 'slideDown 0.3s ease-out'
+                        gap: 8,
+                        background: message.type === 'success' ? '#ECFDF3' : '#FEF2F2',
+                        border: `1px solid ${message.type === 'success' ? '#BBF7D0' : '#FCA5A5'}`,
+                        color: message.type === 'success' ? '#166534' : '#B91C1C',
+                        boxShadow: '0 18px 45px rgba(15, 23, 42, 0.12)',
+                        fontWeight: 500
                     }}>
                         {message.type === 'success' ? 
-                            <CheckCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} /> : 
-                            <AlertCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+                            <CheckCircle style={{ width: 16, height: 16, flexShrink: 0 }} /> : 
+                            <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
                         }
-                        <span style={{ flex: 1 }}>{message.text}</span>
+                        <span style={{ flex: 1, fontSize: 13 }}>{message.text}</span>
                         <button
                             onClick={() => setMessage(null)}
                             style={{ 
-                                padding: '4px',
+                                padding: 4,
                                 background: 'transparent',
                                 border: 'none',
                                 cursor: 'pointer',
-                                borderRadius: '4px',
+                                borderRadius: 999,
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.15s ease'
+                                justifyContent: 'center'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                            <X style={{ width: '16px', height: '16px' }} />
+                            <X style={{ width: 12, height: 12 }} />
                         </button>
                     </div>
                 </div>
             )}
 
             {/* Content */}
-            <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 24px' }}>
+            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '24px 32px 40px' }}>
                 {appliedJobs.length === 0 ? (
                     <div style={{ 
                         textAlign: 'center', 

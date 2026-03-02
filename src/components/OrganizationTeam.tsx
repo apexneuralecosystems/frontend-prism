@@ -114,47 +114,23 @@ const TeamCard = ({
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {team.members.map((member, index) => (
-                    <div key={index} style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between', 
-                        padding: '16px', 
-                        background: 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)',
-                        borderRadius: '10px',
-                        border: '1px solid #e2e8f0',
-                        transition: 'all 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'linear-gradient(to bottom right, #e0f2fe, #dbeafe)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'linear-gradient(to bottom right, #f8fafc, #f1f5f9)'}>
+                    <div
+                        key={index}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '16px',
+                            background: '#FFFFFF',
+                            borderRadius: '10px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 4px 12px rgba(15, 23, 42, 0.04)'
+                        }}
+                    >
                         <div style={{ flex: 1 }}>
-                            <p style={{ fontWeight: '500', color: '#1e293b', margin: '0 0 4px 0' }}>{member.name}</p>
-                            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>{member.email}</p>
+                            <p style={{ fontWeight: 500, color: '#1e293b', margin: '0 0 4px 0' }}>{member.name}</p>
+                            <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>{member.email}</p>
                         </div>
-                        <a
-                            href={member.calendar_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ 
-                                color: '#2563eb',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                textDecoration: 'none',
-                                padding: '6px 12px',
-                                background: '#dbeafe',
-                                borderRadius: '6px',
-                                transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#2563eb';
-                                e.currentTarget.style.color = '#ffffff';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = '#dbeafe';
-                                e.currentTarget.style.color = '#2563eb';
-                            }}
-                        >
-                            Calendar
-                        </a>
                     </div>
                 ))}
                 {team.members.length === 0 && (
@@ -253,30 +229,28 @@ const TeamFormModal = ({
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'space-between', 
-                    padding: '24px', 
+                    padding: '20px 24px', 
                     borderBottom: '1px solid #e2e8f0',
-                    background: 'linear-gradient(to right, #6366f1, #8b5cf6)'
+                    background: '#F9FAFB'
                 }}>
-                    <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#ffffff', margin: 0 }}>
+                    <h2 style={{ fontSize: 18, fontWeight: 600, color: '#111827', margin: 0 }}>
                         {editingTeam ? 'Edit Team' : 'Create New Team'}
                     </h2>
                     <button
                         onClick={onClose}
                         style={{ 
-                            padding: '8px', 
-                            background: 'rgba(255, 255, 255, 0.2)',
+                            padding: 8, 
+                            background: '#E5E7EB',
                             border: 'none',
-                            borderRadius: '8px',
+                            borderRadius: 999,
                             cursor: 'pointer',
-                            transition: 'all 0.15s ease',
+                            transition: 'background 0.15s ease',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
                     >
-                        <X style={{ width: '20px', height: '20px', color: '#ffffff' }} />
+                        <X style={{ width: 18, height: 18, color: '#4B5563' }} />
                     </button>
                 </div>
 
@@ -770,18 +744,36 @@ export function OrganizationTeam() {
 
     if (loading && teams.length === 0) {
         return (
-            <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #e0f2fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+                style={{
+                    minHeight: '100vh',
+                    background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ 
-                        width: '48px', 
-                        height: '48px', 
-                        border: '4px solid #2563eb', 
-                        borderTop: '4px solid transparent', 
-                        borderRadius: '50%', 
-                        animation: 'spin 1s linear infinite',
-                        margin: '0 auto 16px'
-                    }}></div>
-                    <p style={{ color: '#475569', fontSize: '16px', fontWeight: '500' }}>Loading teams...</p>
+                    <div
+                        style={{
+                            width: 56,
+                            height: 56,
+                            border: '5px solid #0052FF',
+                            borderTop: '5px solid transparent',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            margin: '0 auto 16px'
+                        }}
+                    />
+                    <p
+                        style={{
+                            color: '#6B7280',
+                            fontSize: 14,
+                            fontWeight: 500
+                        }}
+                    >
+                        Loading teams...
+                    </p>
                 </div>
             </div>
         );
@@ -813,69 +805,97 @@ export function OrganizationTeam() {
             `}</style>
             <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)', paddingBottom: '80px' }}>
                 {/* Header */}
-                <div style={{ 
-                    background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
-                    borderBottom: '1px solid #e2e8f0',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 20,
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                }}>
-                    <div style={{ 
-                        maxWidth: '1152px', 
-                        margin: '0 auto', 
-                        padding: '16px 24px', 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ 
-                                background: 'rgba(255, 255, 255, 0.2)', 
-                                borderRadius: '10px', 
-                                padding: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                <Users style={{ width: '24px', height: '24px', color: '#ffffff' }} />
-                            </div>
-                            <div>
-                                <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>Organization Teams</h1>
-                                <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Manage your interview teams</p>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <button
-                                onClick={handleCreateTeam}
-                                style={{ 
+                <div
+                    style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        background: 'rgba(245, 247, 250, 0.92)',
+                        backdropFilter: 'blur(16px)',
+                        borderBottom: '1px solid #E5E7EB'
+                    }}
+                >
+                    <div
+                        style={{
+                            maxWidth: 1360,
+                            margin: '0 auto',
+                            padding: '16px 32px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 24
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 12,
+                                    background: '#0052FF',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '10px 20px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    fontSize: '14px',
-                                    color: '#ffffff',
-                                    background: addTeamHovered ? '#1d4ed8' : '#2563eb',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 10px 25px rgba(0, 82, 255, 0.45)'
+                                }}
+                            >
+                                <Users style={{ width: 22, height: 22, color: '#ffffff' }} />
+                            </div>
+                            <div>
+                                <p
+                                    style={{
+                                        fontSize: 12,
+                                        letterSpacing: 2,
+                                        textTransform: 'uppercase',
+                                        fontWeight: 500,
+                                        color: '#6B7280',
+                                        margin: 0
+                                    }}
+                                >
+                                    Prism · Organization
+                                </p>
+                                <h1
+                                    style={{
+                                        fontSize: 22,
+                                        fontWeight: 700,
+                                        color: '#111827',
+                                        margin: '4px 0 0',
+                                        lineHeight: 1.2
+                                    }}
+                                >
+                                    Organization Teams
+                                </h1>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button
+                                onClick={handleCreateTeam}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '9px 18px',
+                                    borderRadius: 999,
+                                    fontWeight: 600,
+                                    fontSize: 13,
                                     border: 'none',
                                     cursor: 'pointer',
-                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-                                    transition: 'all 0.15s ease',
+                                    background: '#0052FF',
+                                    color: '#ffffff',
+                                    boxShadow: '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                    transition: 'background 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out',
                                     transform: 'translateY(0)'
                                 }}
                                 onMouseEnter={(e) => {
-                                    setAddTeamHovered(true);
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 82, 255, 0.40)';
                                 }}
                                 onMouseLeave={(e) => {
-                                    setAddTeamHovered(false);
                                     e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
+                                    e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 82, 255, 0.35)';
                                 }}
                             >
-                                <Plus style={{ width: '16px', height: '16px' }} />
+                                <Plus style={{ width: 16, height: 16 }} />
                                 Add Team
                             </button>
                             <button
@@ -885,21 +905,21 @@ export function OrganizationTeam() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: '44px',
-                                    height: '44px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    color: '#ffffff',
-                                    background: menuHovered ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)',
-                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 999,
+                                    fontWeight: 500,
+                                    color: '#111827',
+                                    background: menuHovered ? '#EEF2FF' : '#FFFFFF',
+                                    border: '1px solid #E5E7EB',
                                     cursor: 'pointer',
-                                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                    transition: 'all 0.15s ease'
+                                    boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)',
+                                    transition: 'background 200ms ease-out, border-color 200ms ease-out'
                                 }}
                                 onMouseEnter={() => setMenuHovered(true)}
                                 onMouseLeave={() => setMenuHovered(false)}
                             >
-                                <Menu style={{ width: '20px', height: '20px' }} />
+                                <Menu style={{ width: 18, height: 18 }} />
                             </button>
                         </div>
                     </div>
@@ -915,8 +935,8 @@ export function OrganizationTeam() {
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.5)',
-                            zIndex: 999,
+                            background: 'rgba(15, 23, 42, 0.40)',
+                            zIndex: 30,
                             animation: 'fadeIn 0.2s ease'
                         }}
                     />
@@ -930,12 +950,12 @@ export function OrganizationTeam() {
                         top: 0,
                         left: 0,
                         height: '100vh',
-                        width: '280px',
+                        width: 260,
                         background: '#ffffff',
-                        boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
-                        zIndex: 1000,
+                        boxShadow: '16px 0 45px rgba(15, 23, 42, 0.18)',
+                        zIndex: 40,
                         transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                        transition: 'transform 0.3s ease',
+                        transition: 'transform 0.22s ease-out',
                         display: 'flex',
                         flexDirection: 'column',
                         overflowY: 'auto'
@@ -943,28 +963,30 @@ export function OrganizationTeam() {
                 >
                     {/* Sidebar Header */}
                     <div style={{
-                        padding: '24px 20px',
+                        padding: '20px 20px 16px',
                         borderBottom: '1px solid #e2e8f0',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+                        background: '#ffffff'
                     }}>
                         <div>
-                            <h2 style={{
-                                fontSize: '18px',
-                                fontWeight: '700',
-                                color: '#0f172a',
+                            <p style={{
+                                fontSize: 11,
+                                letterSpacing: 1.8,
+                                textTransform: 'uppercase',
+                                color: '#9CA3AF',
+                                fontWeight: 500,
                                 margin: 0
                             }}>
                                 Navigation
-                            </h2>
+                            </p>
                             <p style={{
-                                fontSize: '12px',
-                                color: '#64748b',
+                                fontSize: 13,
+                                color: '#4B5563',
                                 margin: '4px 0 0 0'
                             }}>
-                                Quick access menu
+                                Move across Prism
                             </p>
                         </div>
                         <button
@@ -973,163 +995,90 @@ export function OrganizationTeam() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '6px',
-                                border: 'none',
-                                background: '#f1f5f9',
+                                width: 30,
+                                height: 30,
+                                borderRadius: 999,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB',
                                 cursor: 'pointer',
                                 transition: 'background 0.15s ease'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = '#e2e8f0'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = '#f1f5f9'}
                         >
-                            <X style={{ width: '18px', height: '18px', color: '#64748b' }} />
+                            <X style={{ width: 16, height: 16, color: '#64748b' }} />
                         </button>
                     </div>
 
                     {/* Sidebar Navigation */}
                     <div style={{
                         flex: 1,
-                        padding: '16px 0'
+                        padding: '12px 8px'
                     }}>
-                        <button
-                            onClick={() => {
-                                navigate('/organization-profile');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <UserCircle style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Profile
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/organization-team');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <Users style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Team
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/organization-jobpost');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <Briefcase style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Post Job
-                        </button>
-                        <button
-                            onClick={() => {
-                                navigate('/manage-jobs');
-                                setIsSidebarOpen(false);
-                            }}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
-                                color: '#1e293b',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#f1f5f9';
-                                e.currentTarget.style.borderLeftColor = '#2563eb';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
-                            }}
-                        >
-                            <FileText style={{ width: '20px', height: '20px', color: '#2563eb' }} />
-                            Manage Jobs
-                        </button>
+                        {[
+                            {
+                                label: 'Profile',
+                                icon: UserCircle,
+                                href: '/organization-profile'
+                            },
+                            {
+                                label: 'Team',
+                                icon: Users,
+                                href: '/organization-team'
+                            },
+                            {
+                                label: 'Post Job',
+                                icon: Briefcase,
+                                href: '/organization-jobpost'
+                            },
+                            {
+                                label: 'Manage Jobs',
+                                icon: FileText,
+                                href: '/manage-jobs'
+                            }
+                        ].map((item) => {
+                            const isActive = window.location.pathname === item.href;
+                            return (
+                                <button
+                                    key={item.href}
+                                    onClick={() => {
+                                        navigate(item.href);
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-start',
+                                        gap: 10,
+                                        padding: '10px 14px',
+                                        margin: '2px 4px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: isActive ? '#EEF2FF' : 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        letterSpacing: 0.4,
+                                        textTransform: 'uppercase',
+                                        color: isActive ? '#111827' : '#4B5563',
+                                        transition: 'background 200ms ease-out, color 200ms ease-out'
+                                    }}
+                                >
+                                    <item.icon
+                                        style={{
+                                            width: 18,
+                                            height: 18,
+                                            color: isActive ? '#0052FF' : '#6B7280'
+                                        }}
+                                    />
+                                    {item.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Sidebar Footer with Logout */}
                     <div style={{
-                        padding: '16px 0',
+                        padding: '12px 12px 18px',
                         borderTop: '1px solid #e2e8f0',
                         marginTop: 'auto'
                     }}>
@@ -1142,28 +1091,22 @@ export function OrganizationTeam() {
                                 width: '100%',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '12px',
-                                padding: '14px 20px',
+                                justifyContent: 'flex-start',
+                                gap: 10,
+                                padding: '10px 14px',
+                                borderRadius: 10,
                                 border: 'none',
                                 background: 'transparent',
                                 cursor: 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '500',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                letterSpacing: 0.4,
+                                textTransform: 'uppercase',
                                 color: '#dc2626',
-                                transition: 'all 0.15s ease',
-                                textAlign: 'left',
-                                borderLeft: '3px solid transparent'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = '#fef2f2';
-                                e.currentTarget.style.borderLeftColor = '#dc2626';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'transparent';
-                                e.currentTarget.style.borderLeftColor = 'transparent';
+                                transition: 'background 0.15s ease'
                             }}
                         >
-                            <LogOut style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+                            <LogOut style={{ width: 18, height: 18, color: '#dc2626' }} />
                             Logout
                         </button>
                     </div>
@@ -1171,49 +1114,54 @@ export function OrganizationTeam() {
 
             {/* Message Toast */}
             {message && (
-                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '16px 24px 0' }}>
-                    <div style={{ 
-                        padding: '16px 20px',
-                        borderRadius: '12px',
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 72,
+                        right: 24,
+                        zIndex: 60,
+                        animation: 'fadeIn 0.2s ease'
+                    }}
+                >
+                    <div style={{
+                        maxWidth: 360,
+                        padding: '10px 12px',
+                        borderRadius: 12,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        background: message.type === 'success' ? 'linear-gradient(to right, #d1fae5, #a7f3d0)' : 'linear-gradient(to right, #fee2e2, #fecaca)',
-                        border: `1px solid ${message.type === 'success' ? '#86efac' : '#fca5a5'}`,
-                        color: message.type === 'success' ? '#065f46' : '#991b1b',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                        fontWeight: '500',
-                        animation: 'slideDown 0.3s ease-out'
+                        gap: 8,
+                        background: message.type === 'success' ? '#ECFDF3' : '#FEF2F2',
+                        border: `1px solid ${message.type === 'success' ? '#BBF7D0' : '#FCA5A5'}`,
+                        color: message.type === 'success' ? '#166534' : '#B91C1C',
+                        boxShadow: '0 18px 45px rgba(15, 23, 42, 0.12)',
+                        fontWeight: 500
                     }}>
-                        {message.type === 'success' ? 
-                            <CheckCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} /> : 
-                            <AlertCircle style={{ width: '20px', height: '20px', flexShrink: 0 }} />
+                        {message.type === 'success'
+                            ? <CheckCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
+                            : <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
                         }
-                        <span style={{ flex: 1 }}>{message.text}</span>
+                        <span style={{ flex: 1, fontSize: 13 }}>{message.text}</span>
                         <button
                             onClick={() => setMessage(null)}
-                            style={{ 
-                                padding: '4px',
+                            style={{
+                                padding: 4,
                                 background: 'transparent',
                                 border: 'none',
                                 cursor: 'pointer',
-                                borderRadius: '4px',
+                                borderRadius: 999,
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                transition: 'all 0.15s ease'
+                                justifyContent: 'center'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 0, 0, 0.1)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                            <X style={{ width: '16px', height: '16px' }} />
+                            <X style={{ width: 12, height: 12 }} />
                         </button>
                     </div>
                 </div>
             )}
 
             {/* Content */}
-            <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 24px' }}>
+            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '24px 32px 40px' }}>
                 {teams.length === 0 ? (
                     <div style={{ 
                         textAlign: 'center', 

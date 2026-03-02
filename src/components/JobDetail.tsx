@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Briefcase, MapPin, Users, Calendar, DollarSign, FileText,
-    ArrowLeft, UserCheck, X
+    Briefcase, MapPin, Users, Calendar, IndianRupee, FileText,
+    ArrowLeft, UserCheck, X, Menu, UserCircle, LogOut, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { authenticatedFetch } from '../utils/auth';
@@ -50,6 +50,8 @@ export function JobDetail() {
     const [viewerType, setViewerType] = useState<'guest' | 'user' | 'organization'>('guest');
     const [showUnauthApplyModal, setShowUnauthApplyModal] = useState(false);
     const [countdown, setCountdown] = useState(10);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [menuHovered, setMenuHovered] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem('access_token');
@@ -237,12 +239,76 @@ export function JobDetail() {
         }
     };
 
+    const handleLogout = async () => {
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        if (refreshToken) {
+            try {
+                await fetch(API_ENDPOINTS.AUTH.LOGOUT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken })
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user');
+        navigate('/');
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (isSidebarOpen && !target.closest('[data-sidebar-container]') && !target.closest('[data-menu-button]')) {
+                setIsSidebarOpen(false);
+            }
+        };
+
+        if (isSidebarOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isSidebarOpen]);
+
     if (loading) {
         return (
-            <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #e0f2fe)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+                style={{
+                    minHeight: '100vh',
+                    background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                }}
+            >
                 <div style={{ textAlign: 'center' }}>
-                    <div style={{ width: '48px', height: '48px', border: '4px solid #2563eb', borderTop: '4px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }} />
-                    <p style={{ color: '#475569', fontSize: '16px', fontWeight: '500' }}>Loading job...</p>
+                    <div
+                        style={{
+                            width: 56,
+                            height: 56,
+                            border: '5px solid #0052FF',
+                            borderTop: '5px solid transparent',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            margin: '0 auto 16px'
+                        }}
+                    />
+                    <p
+                        style={{
+                            color: '#6B7280',
+                            fontSize: 14,
+                            fontWeight: 500
+                        }}
+                    >
+                        Loading job...
+                    </p>
                 </div>
                 <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
             </div>
@@ -272,82 +338,459 @@ export function JobDetail() {
 
     return (
         <>
-            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                @keyframes slideInLeft {
+                    from {
+                        transform: translateX(-100%);
+                    }
+                    to {
+                        transform: translateX(0);
+                    }
+                }
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
+                }
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+            `}</style>
             <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)', paddingBottom: '80px' }}>
                 {/* Header */}
-                <div style={{ background: 'linear-gradient(to right, #6366f1, #8b5cf6)', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 20, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <button
-                            onClick={() => navigate('/jobs')}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '8px', border: 'none', background: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 500, cursor: 'pointer', fontSize: '14px' }}
-                        >
-                            <ArrowLeft style={{ width: '18px', height: '18px' }} /> Back to Jobs
-                        </button>
-                        <h1 style={{ fontSize: '20px', fontWeight: '700', color: '#ffffff', margin: 0 }}>Job Details</h1>
-                        <div style={{ width: '100px' }} />
+                <div
+                    style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 10,
+                        background: 'rgba(245, 247, 250, 0.92)',
+                        backdropFilter: 'blur(16px)',
+                        borderBottom: '1px solid #E5E7EB'
+                    }}
+                >
+                    <div
+                        style={{
+                            maxWidth: 1360,
+                            margin: '0 auto',
+                            padding: '16px 32px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 24
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 12,
+                                    background: '#0052FF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 10px 25px rgba(0, 82, 255, 0.45)'
+                                }}
+                            >
+                                <Briefcase style={{ width: 22, height: 22, color: '#ffffff' }} />
+                            </div>
+                            <div>
+                                <p
+                                    style={{
+                                        fontSize: 12,
+                                        letterSpacing: 2,
+                                        textTransform: 'uppercase',
+                                        fontWeight: 500,
+                                        color: '#6B7280',
+                                        margin: 0
+                                    }}
+                                >
+                                    Prism · Candidate
+                                </p>
+                                <h1
+                                    style={{
+                                        fontSize: 22,
+                                        fontWeight: 700,
+                                        color: '#111827',
+                                        margin: '4px 0 0',
+                                        lineHeight: 1.2
+                                    }}
+                                >
+                                    Job Details
+                                </h1>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button
+                                onClick={() => navigate('/jobs')}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '9px 16px',
+                                    borderRadius: 999,
+                                    border: '1px solid #E5E7EB',
+                                    background: '#FFFFFF',
+                                    cursor: 'pointer',
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    color: '#374151',
+                                    boxShadow: '0 4px 10px rgba(15, 23, 42, 0.06)',
+                                    transition: 'background 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out',
+                                    transform: 'translateY(0)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 12px 30px rgba(15, 23, 42, 0.14)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 10px rgba(15, 23, 42, 0.06)';
+                                }}
+                            >
+                                <ArrowLeft style={{ width: 16, height: 16 }} />
+                                Back to Jobs
+                            </button>
+                            <button
+                                data-menu-button
+                                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 999,
+                                    fontWeight: 500,
+                                    color: '#111827',
+                                    background: menuHovered ? '#EEF2FF' : '#FFFFFF',
+                                    border: '1px solid #E5E7EB',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)',
+                                    transition: 'background 200ms ease-out, border-color 200ms ease-out'
+                                }}
+                                onMouseEnter={() => setMenuHovered(true)}
+                                onMouseLeave={() => setMenuHovered(false)}
+                            >
+                                <Menu style={{ width: 18, height: 18 }} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
-                    {message && (
-                        <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '8px', background: message.type === 'success' ? '#f0fdf4' : '#fef2f2', color: message.type === 'success' ? '#166534' : '#991b1b', border: `1px solid ${message.type === 'success' ? '#bbf7d0' : '#fecaca'}` }}>
-                            {message.text}
-                        </div>
-                    )}
+                {/* Sidebar Overlay */}
+                {isSidebarOpen && (
+                    <div
+                        onClick={() => setIsSidebarOpen(false)}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(15, 23, 42, 0.40)',
+                            zIndex: 30,
+                            animation: 'fadeIn 0.2s ease'
+                        }}
+                    />
+                )}
 
-                    <div style={{ background: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                        <div style={{ padding: '24px', borderBottom: '1px solid #f1f5f9' }}>
-                            <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Job ID: {job.job_id}</p>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                {/* Left Sidebar */}
+                <div
+                    data-sidebar-container
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        height: '100vh',
+                        width: 260,
+                        background: '#ffffff',
+                        boxShadow: '16px 0 45px rgba(15, 23, 42, 0.18)',
+                        zIndex: 40,
+                        transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                        transition: 'transform 0.22s ease-out',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflowY: 'auto'
+                    }}
+                >
+                    {/* Sidebar Header */}
+                    <div style={{
+                        padding: '20px 20px 16px',
+                        borderBottom: '1px solid #e2e8f0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#ffffff'
+                    }}>
+                        <div>
+                            <p style={{
+                                fontSize: 11,
+                                letterSpacing: 1.8,
+                                textTransform: 'uppercase',
+                                color: '#9CA3AF',
+                                fontWeight: 500,
+                                margin: 0
+                            }}>
+                                Navigation
+                            </p>
+                            <p style={{
+                                fontSize: 13,
+                                color: '#4B5563',
+                                margin: '4px 0 0 0'
+                            }}>
+                                Move across Prism
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setIsSidebarOpen(false)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 30,
+                                height: 30,
+                                borderRadius: 999,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s ease'
+                            }}
+                        >
+                            <X style={{ width: 16, height: 16, color: '#64748b' }} />
+                        </button>
+                    </div>
+
+                    {/* Sidebar Navigation */}
+                    <div style={{
+                        flex: 1,
+                        padding: '12px 8px'
+                    }}>
+                        {[
+                            {
+                                label: 'Profile',
+                                icon: UserCircle,
+                                href: '/user-profile'
+                            },
+                            {
+                                label: 'Jobs',
+                                icon: Briefcase,
+                                href: '/jobs'
+                            }
+                        ].map((item) => {
+                            const isActive = window.location.pathname === item.href;
+                            return (
+                                <button
+                                    key={item.href}
+                                    onClick={() => {
+                                        navigate(item.href);
+                                        setIsSidebarOpen(false);
+                                    }}
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-start',
+                                        gap: 10,
+                                        padding: '10px 14px',
+                                        margin: '2px 4px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: isActive ? '#EEF2FF' : 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        letterSpacing: 0.4,
+                                        textTransform: 'uppercase',
+                                        color: isActive ? '#111827' : '#4B5563',
+                                        transition: 'background 200ms ease-out, color 200ms ease-out'
+                                    }}
+                                >
+                                    <item.icon
+                                        style={{
+                                            width: 18,
+                                            height: 18,
+                                            color: isActive ? '#0052FF' : '#6B7280'
+                                        }}
+                                    />
+                                    {item.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Sidebar Footer with Logout */}
+                    <div style={{
+                        padding: '12px 12px 18px',
+                        borderTop: '1px solid #e2e8f0',
+                        marginTop: 'auto'
+                    }}>
+                        <button
+                            onClick={() => {
+                                handleLogout();
+                                setIsSidebarOpen(false);
+                            }}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'flex-start',
+                                gap: 10,
+                                padding: '10px 14px',
+                                borderRadius: 10,
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                letterSpacing: 0.4,
+                                textTransform: 'uppercase',
+                                color: '#dc2626',
+                                transition: 'background 0.15s ease'
+                            }}
+                        >
+                            <LogOut style={{ width: 18, height: 18, color: '#dc2626' }} />
+                            Logout
+                        </button>
+                    </div>
+                </div>
+
+                {/* Message Toast */}
+                {message && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 72,
+                            right: 24,
+                            zIndex: 60,
+                            animation: 'fadeIn 0.2s ease'
+                        }}
+                    >
+                        <div style={{
+                            maxWidth: 360,
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            background: message.type === 'success' ? '#ECFDF3' : '#FEF2F2',
+                            border: `1px solid ${message.type === 'success' ? '#BBF7D0' : '#FCA5A5'}`,
+                            color: message.type === 'success' ? '#166534' : '#B91C1C',
+                            boxShadow: '0 18px 45px rgba(15, 23, 42, 0.12)',
+                            fontWeight: 500
+                        }}>
+                            {message.type === 'success'
+                                ? <CheckCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
+                                : <AlertCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
+                            }
+                            <span style={{ flex: 1, fontSize: 13 }}>{message.text}</span>
+                            <button
+                                onClick={() => setMessage(null)}
+                                style={{
+                                    padding: 4,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    borderRadius: 999,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <X style={{ width: 12, height: 12 }} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Content */}
+                <div style={{ maxWidth: 1360, margin: '0 auto', padding: '24px 32px 40px' }}>
+                    <div
+                        style={{
+                            background: '#ffffff',
+                            borderRadius: 16,
+                            boxShadow: '0 14px 40px rgba(15, 23, 42, 0.08)',
+                            border: '1px solid #E2E8F0',
+                            overflow: 'hidden',
+                            animation: 'slideDown 0.25s ease-out'
+                        }}
+                    >
+                        <div style={{ padding: 24, borderBottom: '1px solid #f1f5f9' }}>
+                            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>Job ID: {job.job_id}</p>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                                 <div>
-                                    <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>{job.role}</h2>
-                                    <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '16px', fontWeight: '500' }}>{job.company.name}</p>
-                                    <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0 }}>{job.company.email}</p>
+                                    <h2 style={{ fontSize: 24, fontWeight: 600, color: '#1e293b', margin: '0 0 8px 0' }}>{job.role}</h2>
+                                    <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: 16, fontWeight: 500 }}>{job.company.name}</p>
+                                    <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>{job.company.email}</p>
                                 </div>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '600', background: typeColors.bg, color: typeColors.color, border: `1px solid ${typeColors.border}` }}>
+                                <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '8px 16px',
+                                    borderRadius: 20,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    background: typeColors.bg,
+                                    color: typeColors.color,
+                                    border: `1px solid ${typeColors.border}`
+                                }}>
                                     {getJobTypeLabel(job.job_type)}
                                 </span>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <MapPin style={{ width: '18px', height: '18px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '15px', color: '#475569' }}>{job.location}</span>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginTop: 20 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <MapPin style={{ width: 18, height: 18, color: '#64748b' }} />
+                                    <span style={{ fontSize: 15, color: '#475569' }}>{job.location}</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Users style={{ width: '18px', height: '18px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '15px', color: '#475569' }}>{job.number_of_openings} opening(s)</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Users style={{ width: 18, height: 18, color: '#64748b' }} />
+                                    <span style={{ fontSize: 15, color: '#475569' }}>{job.number_of_openings} opening(s)</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Calendar style={{ width: '18px', height: '18px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '15px', color: '#475569' }}>Apply by: {formatDate(job.application_close_date)}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Calendar style={{ width: 18, height: 18, color: '#64748b' }} />
+                                    <span style={{ fontSize: 15, color: '#475569' }}>Apply by: {formatDate(job.application_close_date)}</span>
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <DollarSign style={{ width: '18px', height: '18px', color: '#64748b' }} />
-                                    <span style={{ fontSize: '15px', color: '#475569', fontWeight: '600' }}>{formatPackageLpa(job)}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <IndianRupee style={{ width: 18, height: 18, color: '#64748b' }} />
+                                    <span style={{ fontSize: 15, color: '#475569', fontWeight: 600 }}>{formatPackageLpa(job)}</span>
                                 </div>
                             </div>
-                            <p style={{ fontSize: '13px', color: '#94a3b8', marginTop: '16px', marginBottom: 0 }}>Posted {formatDate(job.created_at)}</p>
+                            <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 16, marginBottom: 0 }}>Posted {formatDate(job.created_at)}</p>
                             {job.notes && (
-                                <div style={{ marginTop: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                    <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.6 }}>{job.notes}</p>
+                                <div style={{ marginTop: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                                    <p style={{ fontSize: 14, color: '#475569', margin: 0, lineHeight: 1.6 }}>{job.notes}</p>
                                 </div>
                             )}
                         </div>
 
                         {/* JD Section */}
                         {job.file_path && (
-                            <div style={{ padding: '24px', borderBottom: '1px solid #f1f5f9' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <FileText style={{ width: '20px', height: '20px', color: '#2563eb' }} /> Job Description
+                            <div style={{ padding: 24, borderBottom: '1px solid #f1f5f9' }}>
+                                <h3 style={{ fontSize: 18, fontWeight: 600, color: '#1e293b', margin: '0 0 12px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <FileText style={{ width: 20, height: 20, color: '#2563eb' }} /> Job Description
                                 </h3>
                                 {isPdf && jdUrl ? (
                                     <iframe
                                         src={jdUrl}
                                         title="Job Description PDF"
-                                        style={{ width: '100%', height: '600px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc' }}
+                                        style={{ width: '100%', height: 600, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}
                                     />
                                 ) : (
-                                    <a href={jdUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '15px', color: '#2563eb', fontWeight: '500', textDecoration: 'none' }}>
+                                    <a href={jdUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 15, color: '#2563eb', fontWeight: 500, textDecoration: 'none' }}>
                                         View Job Description (opens in new tab)
                                     </a>
                                 )}
@@ -355,39 +798,85 @@ export function JobDetail() {
                         )}
 
                         {/* Apply at end: hide for org; guest = popup + 10s redirect; candidate = normal */}
-                        <div style={{ padding: '24px' }}>
+                        <div style={{ padding: 24 }}>
                             {viewerType === 'organization' ? (
                                 null
                             ) : applied ? (
-                                <div style={{ padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', color: '#166534', fontWeight: '500' }}>
+                                <div style={{ padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', color: '#166534', fontWeight: 500 }}>
                                     Job applied.
                                 </div>
                             ) : !applicationsOpen ? (
-                                <div style={{ padding: '16px', background: '#fef3c7', borderRadius: '8px', border: '1px solid #fcd34d', color: '#92400e', fontWeight: '500' }}>
+                                <div style={{ padding: 16, background: '#fef3c7', borderRadius: 8, border: '1px solid #fcd34d', color: '#92400e', fontWeight: 500 }}>
                                     Applications are closed for this position.
                                 </div>
                             ) : viewerType === 'guest' ? (
                                 <button
                                     onClick={() => { setShowUnauthApplyModal(true); }}
                                     style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '8px', border: 'none',
-                                        background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)', color: '#fff', fontWeight: '600', fontSize: '16px', cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '12px 24px',
+                                        borderRadius: 999,
+                                        border: 'none',
+                                        background: '#0052FF',
+                                        color: '#ffffff',
+                                        fontWeight: 600,
+                                        fontSize: 15,
+                                        cursor: 'pointer',
+                                        boxShadow: '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                        transition: 'background 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out',
+                                        transform: 'translateY(0)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                        e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 82, 255, 0.40)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 82, 255, 0.35)';
                                     }}
                                 >
-                                    <UserCheck style={{ width: '20px', height: '20px' }} /> Apply for this job
+                                    <UserCheck style={{ width: 18, height: 18 }} /> Apply for this job
                                 </button>
                             ) : (
                                 <button
                                     onClick={() => { setFormError(null); setShowApplyForm(true); }}
                                     disabled={processing}
                                     style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '8px', border: 'none',
-                                        background: 'linear-gradient(to bottom right, #2563eb, #1d4ed8)', color: '#fff', fontWeight: '600', fontSize: '16px', cursor: processing ? 'not-allowed' : 'pointer',
-                                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '12px 24px',
+                                        borderRadius: 999,
+                                        border: 'none',
+                                        background: processing ? '#93C5FD' : '#0052FF',
+                                        color: '#ffffff',
+                                        fontWeight: 600,
+                                        fontSize: 15,
+                                        cursor: processing ? 'not-allowed' : 'pointer',
+                                        boxShadow: '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                        transition: 'background 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.2s ease-out',
+                                        transform: 'translateY(0)'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!processing) {
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                            e.currentTarget.style.boxShadow = '0 16px 40px rgba(0, 82, 255, 0.40)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!processing) {
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 82, 255, 0.35)';
+                                        }
                                     }}
                                 >
-                                    <UserCheck style={{ width: '20px', height: '20px' }} /> Apply for this job
+                                    {processing ? 'Processing...' : (
+                                        <>
+                                            <UserCheck style={{ width: 18, height: 18 }} /> Apply for this job
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>

@@ -96,32 +96,63 @@ const SectionCard = ({
     icon?: any;
     children: React.ReactNode;
 }) => {
+    const [isHovered, setIsHovered] = useState(false);
+
     return (
-        <div style={{
-            background: '#ffffff',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-            border: '1px solid #e5e7eb',
-            marginBottom: '24px',
-            padding: '28px'
-        }}>
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                marginBottom: '24px',
-                borderBottom: '2px solid #f3f4f6',
-                paddingBottom: '12px'
-            }}>
-                {Icon && <Icon style={{ width: '22px', height: '22px', color: '#2563eb' }} />}
-                <h2 style={{
-                    fontSize: '20px',
-                    fontWeight: '600',
-                    color: '#1f2937',
-                    margin: 0
-                }}>{title}</h2>
+        <div
+            style={{
+                background: '#FFFFFF',
+                borderRadius: 12,
+                boxShadow: isHovered
+                    ? '0 18px 45px rgba(15, 23, 42, 0.10)'
+                    : '0 10px 30px rgba(15, 23, 42, 0.06)',
+                border: '1px solid #E2E8F0',
+                marginBottom: 24,
+                overflow: 'hidden',
+                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                transition: 'transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out'
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px 24px',
+                    borderBottom: '1px solid #E5E7EB',
+                    background: '#F9FAFB'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {Icon && (
+                        <Icon
+                            style={{
+                                width: 20,
+                                height: 20,
+                                color: '#0052FF'
+                            }}
+                        />
+                    )}
+                    <h2
+                        style={{
+                            fontSize: 16,
+                            fontWeight: 600,
+                            letterSpacing: 0.2,
+                            color: '#111827',
+                            margin: 0
+                        }}
+                    >
+                        {title}
+                    </h2>
+                </div>
             </div>
-            <div>
+            <div
+                style={{
+                    padding: 24
+                }}
+            >
                 {children}
             </div>
         </div>
@@ -451,65 +482,215 @@ export function UserProfile() {
     const renderBasicInfo = () => {
         if (!isEditMode) {
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
-                        <div style={{
-                            width: '140px',
-                            height: '140px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 24
+                    }}
+                >
+                    {/* Avatar and primary text */}
+                    <div
+                        style={{
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                            overflow: 'hidden',
-                            boxShadow: '0 8px 16px rgba(102, 126, 234, 0.4)',
-                            border: '4px solid #ffffff',
-                            position: 'relative'
-                        }}>
+                            gap: 20,
+                            flexWrap: 'wrap'
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: 80,
+                                height: 80,
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 40%, #8B5CF6 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                overflow: 'hidden',
+                                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.25)',
+                                border: '4px solid #F9FAFB',
+                                position: 'relative'
+                            }}
+                        >
                             {data.profilePhotoUrl ? (
-                                <img 
+                                <img
                                     src={getStorageUrl(data.profilePhotoUrl)}
-                                    alt="Profile" 
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }}
+                                    alt="Profile"
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        objectFit: 'cover',
+                                        position: 'absolute'
+                                    }}
                                 />
                             ) : (
-                                <User style={{ width: '70px', height: '70px', color: '#ffffff' }} />
+                                <User style={{ width: 40, height: 40, color: '#FFFFFF' }} />
                             )}
                         </div>
+                        <div>
+                            <h2
+                                style={{
+                                    fontSize: 18,
+                                    fontWeight: 700,
+                                    color: '#111827',
+                                    margin: 0
+                                }}
+                            >
+                                {data.fullName || 'Candidate name'}
+                            </h2>
+                            <p
+                                style={{
+                                    fontSize: 13,
+                                    color: '#6B7280',
+                                    margin: '4px 0 0'
+                                }}
+                            >
+                                {data.location || 'Location not specified'}
+                            </p>
+                        </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
-                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                <User style={{ width: '16px', height: '16px' }} /> Name
+
+                    {/* Detail grid */}
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                            gap: 16
+                        }}
+                    >
+                        {/* Email */}
+                        <div
+                            style={{
+                                padding: '12px 14px',
+                                borderRadius: 10,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB'
+                            }}
+                        >
+                            <p
+                                style={{
+                                    fontSize: 12,
+                                    color: '#6B7280',
+                                    marginBottom: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    fontWeight: 500
+                                }}
+                            >
+                                <Mail style={{ width: 14, height: 14 }} /> Email
                             </p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.fullName}</p>
-                        </div>
-                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                <MapPin style={{ width: '16px', height: '16px' }} /> Location
+                            <p
+                                style={{
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: '#111827',
+                                    margin: 0,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {data.email}
                             </p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.location || "Info not given"}</p>
                         </div>
-                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                <Mail style={{ width: '16px', height: '16px' }} /> Email
+
+                        {/* Phone */}
+                        <div
+                            style={{
+                                padding: '12px 14px',
+                                borderRadius: 10,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB'
+                            }}
+                        >
+                            <p
+                                style={{
+                                    fontSize: 12,
+                                    color: '#6B7280',
+                                    marginBottom: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    fontWeight: 500
+                                }}
+                            >
+                                <Phone style={{ width: 14, height: 14 }} /> Phone
                             </p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.email}</p>
-                        </div>
-                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
-                                <Phone style={{ width: '16px', height: '16px' }} /> Phone
+                            <p
+                                style={{
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: data.phone ? '#111827' : '#9CA3AF',
+                                    margin: 0
+                                }}
+                            >
+                                {data.phone || 'Info not given'}
                             </p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.phone || "Info not given"}</p>
                         </div>
-                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', fontWeight: '500' }}>Gender</p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.gender || "Info not given"}</p>
+
+                        {/* Gender */}
+                        <div
+                            style={{
+                                padding: '12px 14px',
+                                borderRadius: 10,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB'
+                            }}
+                        >
+                            <p
+                                style={{
+                                    fontSize: 12,
+                                    color: '#6B7280',
+                                    marginBottom: 4,
+                                    fontWeight: 500
+                                }}
+                            >
+                                Gender
+                            </p>
+                            <p
+                                style={{
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: data.gender ? '#111827' : '#9CA3AF',
+                                    margin: 0
+                                }}
+                            >
+                                {data.gender || 'Info not given'}
+                            </p>
                         </div>
-                        <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '6px', fontWeight: '500' }}>Date of Birth</p>
-                            <p style={{ fontSize: '15px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{data.dob || "Info not given"}</p>
+
+                        {/* Date of Birth */}
+                        <div
+                            style={{
+                                padding: '12px 14px',
+                                borderRadius: 10,
+                                border: '1px solid #E5E7EB',
+                                background: '#F9FAFB'
+                            }}
+                        >
+                            <p
+                                style={{
+                                    fontSize: 12,
+                                    color: '#6B7280',
+                                    marginBottom: 4,
+                                    fontWeight: 500
+                                }}
+                            >
+                                Date of Birth
+                            </p>
+                            <p
+                                style={{
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: data.dob ? '#111827' : '#9CA3AF',
+                                    margin: 0
+                                }}
+                            >
+                                {data.dob || 'Info not given'}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1788,73 +1969,82 @@ export function UserProfile() {
     return (
         <div style={{
             minHeight: '100vh',
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+            background: 'linear-gradient(to bottom right, #f8fafc, #dbeafe)',
+            color: '#111827'
         }}>
             {/* Header */}
             <div style={{
-                background: 'linear-gradient(to right, #6366f1, #8b5cf6)',
-                borderBottom: '1px solid #e2e8f0',
                 position: 'sticky',
                 top: 0,
-                zIndex: 20,
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                zIndex: 10,
+                background: 'rgba(245, 247, 250, 0.92)',
+                backdropFilter: 'blur(16px)',
+                borderBottom: '1px solid #E5E7EB'
             }}>
                 <div style={{
-                    maxWidth: '1152px',
+                    maxWidth: 1360,
                     margin: '0 auto',
-                    padding: '16px 24px',
+                    padding: '16px 32px',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center'
+                    alignItems: 'center',
+                    gap: 24
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <div style={{ 
-                            background: 'rgba(255, 255, 255, 0.2)', 
-                            borderRadius: '10px', 
-                            padding: '8px',
+                            width: 40,
+                            height: 40,
+                            background: '#0052FF', 
+                            borderRadius: 12, 
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
+                            boxShadow: '0 10px 25px rgba(0, 82, 255, 0.45)'
                         }}>
-                            <User style={{ width: '24px', height: '24px', color: '#ffffff' }} />
+                            <User style={{ width: 22, height: 22, color: '#ffffff' }} />
                         </div>
                         <div>
-                            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#ffffff', margin: 0, lineHeight: '1.2' }}>Candidate Profile</h1>
-                            <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.9)', margin: '2px 0 0 0' }}>Manage your professional information</p>
+                            <p style={{
+                                fontSize: 12,
+                                letterSpacing: 2,
+                                textTransform: 'uppercase',
+                                fontWeight: 500,
+                                color: '#6B7280',
+                                margin: 0
+                            }}>
+                                Prism · Candidate
+                            </p>
+                            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: '4px 0 0', lineHeight: 1.2 }}>
+                                Candidate Profile
+                            </h1>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {!isEditMode ? (
                             <button
                                 onClick={() => setIsEditMode(true)}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '10px 20px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    fontSize: '14px',
+                                    gap: 8,
+                                    padding: '9px 18px',
+                                    borderRadius: 999,
+                                    fontWeight: 600,
+                                    fontSize: 13,
+                                    letterSpacing: 0.3,
+                                    textTransform: 'uppercase',
                                     color: '#ffffff',
-                                    background: editHovered ? '#1d4ed8' : '#2563eb',
+                                    background: '#0052FF',
                                     border: 'none',
                                     cursor: 'pointer',
-                                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)',
-                                    transition: 'all 0.15s ease',
-                                    transform: 'translateY(0)'
+                                    boxShadow: '0 12px 30px rgba(0, 82, 255, 0.35)',
+                                    transition: 'background 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out',
+                                    transform: editHovered ? 'translateY(-1px)' : 'translateY(0)'
                                 }}
-                                onMouseEnter={(e) => {
-                                    setEditHovered(true);
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.5)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    setEditHovered(false);
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.4)';
-                                }}
+                                onMouseEnter={() => setEditHovered(true)}
+                                onMouseLeave={() => setEditHovered(false)}
                             >
-                                <Pencil style={{ width: '16px', height: '16px' }} />
+                                <Pencil style={{ width: 14, height: 14 }} />
                                 Edit Profile
                             </button>
                         ) : (
@@ -1864,18 +2054,20 @@ export function UserProfile() {
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '10px 20px',
-                                    borderRadius: '8px',
-                                    fontWeight: '500',
-                                    fontSize: '14px',
+                                    gap: 8,
+                                    padding: '9px 18px',
+                                    borderRadius: 999,
+                                    fontWeight: 600,
+                                    fontSize: 13,
+                                    letterSpacing: 0.3,
+                                    textTransform: 'uppercase',
                                     color: '#ffffff',
-                                    background: loading ? '#16a34a' : (editHovered ? '#15803d' : '#16a34a'),
+                                    background: loading ? '#16A34A' : '#059669',
                                     border: 'none',
                                     cursor: loading ? 'not-allowed' : 'pointer',
                                     opacity: loading ? 0.5 : 1,
-                                    boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)',
-                                    transition: 'all 0.15s ease',
+                                    boxShadow: '0 10px 25px rgba(5, 150, 105, 0.35)',
+                                    transition: 'background 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out',
                                     transform: 'translateY(0)'
                                 }}
                                 onMouseEnter={(e) => {
@@ -1892,8 +2084,8 @@ export function UserProfile() {
                                 {loading ? (
                                     <>
                                         <div style={{
-                                            width: '16px',
-                                            height: '16px',
+                                            width: 16,
+                                            height: 16,
                                             border: '2px solid white',
                                             borderTop: '2px solid transparent',
                                             borderRadius: '50%',
@@ -1903,7 +2095,7 @@ export function UserProfile() {
                                     </>
                                 ) : (
                                     <>
-                                        <Save style={{ width: '16px', height: '16px' }} />
+                                        <Save style={{ width: 14, height: 14 }} />
                                         Save Changes
                                     </>
                                 )}
@@ -1916,21 +2108,21 @@ export function UserProfile() {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '44px',
-                                height: '44px',
-                                borderRadius: '8px',
-                                fontWeight: '500',
-                                color: '#ffffff',
-                                background: menuHovered ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.15)',
-                                border: '1px solid rgba(255, 255, 255, 0.3)',
+                                width: 40,
+                                height: 40,
+                                borderRadius: 999,
+                                fontWeight: 500,
+                                color: '#111827',
+                                background: menuHovered ? '#EEF2FF' : '#FFFFFF',
+                                border: '1px solid #E5E7EB',
                                 cursor: 'pointer',
-                                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                                transition: 'all 0.15s ease'
+                                boxShadow: '0 4px 10px rgba(15, 23, 42, 0.08)',
+                                transition: 'background 200ms ease-out, border-color 200ms ease-out'
                             }}
                             onMouseEnter={() => setMenuHovered(true)}
                             onMouseLeave={() => setMenuHovered(false)}
                         >
-                            <Menu style={{ width: '20px', height: '20px' }} />
+                            <Menu style={{ width: 18, height: 18 }} />
                         </button>
                     </div>
                 </div>
@@ -1946,8 +2138,8 @@ export function UserProfile() {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.5)',
-                        zIndex: 999,
+                        background: 'rgba(15, 23, 42, 0.40)',
+                        zIndex: 30,
                         animation: 'fadeIn 0.2s ease'
                     }}
                 />
@@ -1961,12 +2153,12 @@ export function UserProfile() {
                     top: 0,
                     left: 0,
                     height: '100vh',
-                    width: '280px',
+                    width: 260,
                     background: '#ffffff',
-                    boxShadow: '2px 0 10px rgba(0, 0, 0, 0.1)',
-                    zIndex: 1000,
+                    boxShadow: '16px 0 45px rgba(15, 23, 42, 0.18)',
+                    zIndex: 40,
                     transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-                    transition: 'transform 0.3s ease',
+                    transition: 'transform 0.22s ease-out',
                     display: 'flex',
                     flexDirection: 'column',
                     overflowY: 'auto'
@@ -1974,28 +2166,28 @@ export function UserProfile() {
             >
                 {/* Sidebar Header */}
                 <div style={{
-                    padding: '24px 20px',
+                    padding: '20px 20px 16px',
                     borderBottom: '1px solid #e2e8f0',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+                    background: '#ffffff'
                 }}>
                     <div>
                         <h2 style={{
-                            fontSize: '18px',
-                            fontWeight: '700',
+                            fontSize: 18,
+                            fontWeight: 700,
                             color: '#0f172a',
                             margin: 0
                         }}>
                             Navigation
                         </h2>
                         <p style={{
-                            fontSize: '12px',
-                            color: '#64748b',
+                            fontSize: 13,
+                            color: '#4B5563',
                             margin: '4px 0 0 0'
                         }}>
-                            Quick access menu
+                            Move across Prism
                         </p>
                     </div>
                     <button
@@ -2004,11 +2196,11 @@ export function UserProfile() {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: '32px',
-                            height: '32px',
-                            borderRadius: '6px',
-                            border: 'none',
-                            background: '#f1f5f9',
+                            width: 30,
+                            height: 30,
+                            borderRadius: 999,
+                            border: '1px solid #E5E7EB',
+                            background: '#F9FAFB',
                             cursor: 'pointer',
                             transition: 'background 0.15s ease'
                         }}
@@ -2128,7 +2320,7 @@ export function UserProfile() {
                             e.currentTarget.style.borderLeftColor = 'transparent';
                         }}
                     >
-                        <LogOut style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+                        <LogOut style={{ width: 20, height: 20, color: '#dc2626' }} />
                         Logout
                     </button>
                 </div>
@@ -2158,36 +2350,47 @@ export function UserProfile() {
 
             {/* Message Toast */}
             {message && (
-                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '0 28px', marginTop: '20px' }}>
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 72,
+                        right: 24,
+                        zIndex: 60,
+                        animation: 'fadeIn 0.2s ease'
+                    }}
+                >
                     <div style={{
-                        padding: '16px 20px',
-                        borderRadius: '12px',
+                        maxWidth: 360,
+                        padding: '10px 12px',
+                        borderRadius: 12,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px',
-                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
-                        background: message.type === 'success' ? 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)' : 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-                        color: message.type === 'success' ? '#065f46' : '#991b1b',
-                        border: message.type === 'success' ? '1px solid #a7f3d0' : '1px solid #fecaca'
+                        gap: 8,
+                        boxShadow: '0 18px 45px rgba(15, 23, 42, 0.12)',
+                        background: message.type === 'success' ? '#ECFDF3' : '#FEF2F2',
+                        color: message.type === 'success' ? '#166534' : '#B91C1C',
+                        border: `1px solid ${
+                            message.type === 'success' ? '#BBF7D0' : '#FCA5A5'
+                        }`
                     }}>
                         {message.type === 'success' ? (
-                            <CheckCircle style={{ width: '22px', height: '22px', flexShrink: 0 }} />
+                            <CheckCircle style={{ width: 16, height: 16, flexShrink: 0 }} />
                         ) : (
-                            <X style={{ width: '22px', height: '22px', flexShrink: 0 }} />
+                            <X style={{ width: 16, height: 16, flexShrink: 0 }} />
                         )}
-                        <span style={{ fontWeight: '500', fontSize: '14px', flex: 1 }}>{message.text}</span>
+                        <span style={{ fontWeight: 500, fontSize: 13, flex: 1 }}>{message.text}</span>
                         <button
                             onClick={() => setMessage(null)}
                             style={{
                                 marginLeft: 'auto',
-                                background: 'rgba(0,0,0,0.05)',
-                                borderRadius: '6px',
-                                padding: '6px',
+                                background: 'transparent',
+                                borderRadius: 999,
+                                padding: 4,
                                 border: 'none',
                                 cursor: 'pointer'
                             }}
                         >
-                            <X style={{ width: '16px', height: '16px' }} />
+                            <X style={{ width: 12, height: 12 }} />
                         </button>
                     </div>
                 </div>
@@ -2195,7 +2398,7 @@ export function UserProfile() {
 
             {/* Loading State */}
             {isLoading ? (
-                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '0 28px', paddingTop: '80px', paddingBottom: '80px' }}>
+                <div style={{ maxWidth: 1360, margin: '0 auto', padding: '64px 32px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{
                             width: '60px',
@@ -2206,12 +2409,12 @@ export function UserProfile() {
                             animation: 'spin 1s linear infinite',
                             marginBottom: '20px'
                         }}></div>
-                        <p style={{ color: '#6b7280', fontSize: '15px', fontWeight: '500' }}>Loading your profile...</p>
+                        <p style={{ color: '#6b7280', fontSize: 14, fontWeight: 500 }}>Loading your profile...</p>
                     </div>
                 </div>
             ) : (
                 /* Content */
-                <div style={{ maxWidth: '1152px', margin: '0 auto', padding: '32px 28px' }}>
+                <div style={{ maxWidth: 1360, margin: '0 auto', padding: '24px 32px 40px' }}>
                     <SectionCard title="Basic Information">
                         {renderBasicInfo()}
                     </SectionCard>
