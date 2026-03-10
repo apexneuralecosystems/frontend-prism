@@ -85,6 +85,7 @@ export const API_ENDPOINTS = {
   ADMIN_MANAGE_JOB_STATUS: `${API_BASE_URL}/api/admin/manage-job-status`,
   UPLOAD: `${API_BASE_URL}/api/upload`,
   PARSE_RESUME: `${API_BASE_URL}/api/parse-resume`,
+  PAYMENTS_CONFIG: `${API_BASE_URL}/api/payments/config`,
   BUY_CREDITS: `${API_BASE_URL}/api/payments/buy-credits`,
   CAPTURE_ORDER: `${API_BASE_URL}/api/payments/capture-order`,
   ORGANIZATION_CREDITS: `${API_BASE_URL}/api/organization/credits`,

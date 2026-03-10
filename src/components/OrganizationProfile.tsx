@@ -170,6 +170,7 @@ export function OrganizationProfile() {
     const [credits, setCredits] = useState<number>(0);
     const [showBuyCreditsModal, setShowBuyCreditsModal] = useState(false);
     const [numCreditsToBuy, setNumCreditsToBuy] = useState<number>(1);
+    const [creditPriceUsd, setCreditPriceUsd] = useState<number>(1);
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
     const [paymentHistory, setPaymentHistory] = useState<Array<{
@@ -184,6 +185,16 @@ export function OrganizationProfile() {
     const [linkedInConnecting, setLinkedInConnecting] = useState(false);
     const [salesforceConnected, setSalesforceConnected] = useState<boolean | null>(null);
     const [salesforceConnecting, setSalesforceConnecting] = useState(false);
+
+    useEffect(() => {
+        if (!showBuyCreditsModal) return;
+        fetch(API_ENDPOINTS.PAYMENTS_CONFIG)
+            .then((res) => res.ok ? res.json() : null)
+            .then((data) => {
+                if (data && typeof data.credit_price_usd === 'number') setCreditPriceUsd(data.credit_price_usd);
+            })
+            .catch(() => {});
+    }, [showBuyCreditsModal]);
 
     useEffect(() => {
         // Check if we're returning from a payment (check URL params or localStorage flag)
@@ -3405,7 +3416,7 @@ export function OrganizationProfile() {
                             color: '#64748b',
                             marginBottom: '20px'
                         }}>
-                            1 credit = ₹10
+                            1 credit = ${creditPriceUsd}
                         </p>
                         
                         <label style={{
@@ -3448,7 +3459,7 @@ export function OrganizationProfile() {
                                 color: '#0f172a',
                                 margin: 0
                             }}>
-                                Total: ₹{numCreditsToBuy * 10}
+                                Total: ${numCreditsToBuy * creditPriceUsd}
                             </p>
                         </div>
                         
