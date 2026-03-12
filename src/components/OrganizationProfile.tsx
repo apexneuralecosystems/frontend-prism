@@ -168,9 +168,12 @@ export function OrganizationProfile() {
     const [inviteList, setInviteList] = useState<Array<{ name: string; email: string }>>([]);
     const [isOwner, setIsOwner] = useState(true);
     const [credits, setCredits] = useState<number>(0);
+    const [aiInterviewCredits, setAiInterviewCredits] = useState<number>(0);
     const [showBuyCreditsModal, setShowBuyCreditsModal] = useState(false);
     const [numCreditsToBuy, setNumCreditsToBuy] = useState<number>(1);
     const [creditPriceUsd, setCreditPriceUsd] = useState<number>(1);
+    const [aiInterviewCreditPriceUsd, setAiInterviewCreditPriceUsd] = useState<number>(1);
+    const [selectedCreditType, setSelectedCreditType] = useState<'job' | 'ai'>('job');
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [paymentError, setPaymentError] = useState<string | null>(null);
     const [paymentHistory, setPaymentHistory] = useState<Array<{
@@ -191,7 +194,12 @@ export function OrganizationProfile() {
         fetch(API_ENDPOINTS.PAYMENTS_CONFIG)
             .then((res) => res.ok ? res.json() : null)
             .then((data) => {
-                if (data && typeof data.credit_price_usd === 'number') setCreditPriceUsd(data.credit_price_usd);
+                if (data && typeof data.credit_price_usd === 'number') {
+                    setCreditPriceUsd(data.credit_price_usd);
+                }
+                if (data && typeof data.ai_interview_credit_price_usd === 'number') {
+                    setAiInterviewCreditPriceUsd(data.ai_interview_credit_price_usd);
+                }
             })
             .catch(() => {});
     }, [showBuyCreditsModal]);
@@ -319,6 +327,7 @@ export function OrganizationProfile() {
                 if (res?.ok) {
                     const result = await res.json();
                     setCredits(result.credits || 0);
+                    setAiInterviewCredits(result.ai_interview_credits || 0);
                 }
             } catch (err) {
                 console.error('Failed to fetch credits:', err);
@@ -844,8 +853,12 @@ export function OrganizationProfile() {
         setPaymentError(null);
         setMessage(null);
         try {
+            const endpoint = selectedCreditType === 'ai'
+                ? API_ENDPOINTS.BUY_AI_CREDITS
+                : API_ENDPOINTS.BUY_CREDITS;
+
             const res = await authenticatedFetch(
-                API_ENDPOINTS.BUY_CREDITS,
+                endpoint,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -2818,6 +2831,15 @@ export function OrganizationProfile() {
                                     >
                                         {credits}
                                     </p>
+                                    <p
+                                        style={{
+                                            marginTop: 4,
+                                            fontSize: 12,
+                                            color: '#4B5563'
+                                        }}
+                                    >
+                                        AI Interview Credits: {aiInterviewCredits}
+                                    </p>
                                 </div>
                                 {isOwner && (
                                     <button
@@ -3197,8 +3219,9 @@ export function OrganizationProfile() {
                                                 navigate
                                             );
                                             if (creditsRes?.ok) {
-                                                const creditsResult = await creditsRes.json();
-                                                setCredits(creditsResult.credits || 0);
+                                            const creditsResult = await creditsRes.json();
+                                            setCredits(creditsResult.credits || 0);
+                                            setAiInterviewCredits(creditsResult.ai_interview_credits || 0);
                                             }
                                         }
                                     } catch (err) {
@@ -3351,7 +3374,7 @@ export function OrganizationProfile() {
                                                     color: '#16a34a',
                                                     margin: '0 0 2px 0'
                                                 }}>
-                                                    ${transaction.amount.toFixed(2)} {transaction.currency}
+                                                    {(transaction.currency === 'INR' ? '₹' : '$')}{transaction.amount.toFixed(2)} {transaction.currency}
                                                 </p>
                                                 <p style={{
                                                     fontSize: 12,
@@ -3406,18 +3429,54 @@ export function OrganizationProfile() {
                         <h2 style={{
                             fontSize: '20px',
                             fontWeight: '600',
-                            marginBottom: '16px',
+                            marginBottom: '8px',
                             color: '#0f172a'
                         }}>
                             Buy Credits
                         </h2>
                         <p style={{
-                            fontSize: '14px',
+                            fontSize: '13px',
                             color: '#64748b',
-                            marginBottom: '20px'
+                            marginBottom: '16px'
                         }}>
-                            1 credit = ${creditPriceUsd}
+                            Select which type of credits you want to buy.
                         </p>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedCreditType('job')}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 10px',
+                                    borderRadius: 8,
+                                    border: selectedCreditType === 'job' ? '1px solid #2563eb' : '1px solid #e5e7eb',
+                                    background: selectedCreditType === 'job' ? '#eff6ff' : '#ffffff',
+                                    color: selectedCreditType === 'job' ? '#1d4ed8' : '#334155',
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Job Post Credits (${creditPriceUsd}/credit)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedCreditType('ai')}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 10px',
+                                    borderRadius: 8,
+                                    border: selectedCreditType === 'ai' ? '1px solid #2563eb' : '1px solid #e5e7eb',
+                                    background: selectedCreditType === 'ai' ? '#eff6ff' : '#ffffff',
+                                    color: selectedCreditType === 'ai' ? '#1d4ed8' : '#334155',
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                AI Interview Credits (${aiInterviewCreditPriceUsd}/credit)
+                            </button>
+                        </div>
                         
                         <label style={{
                             display: 'block',
@@ -3459,7 +3518,9 @@ export function OrganizationProfile() {
                                 color: '#0f172a',
                                 margin: 0
                             }}>
-                                Total: ${numCreditsToBuy * creditPriceUsd}
+                                {selectedCreditType === 'ai'
+                                    ? `Total: $${(numCreditsToBuy * aiInterviewCreditPriceUsd).toFixed(2)}`
+                                    : `Total: $${(numCreditsToBuy * creditPriceUsd).toFixed(2)}`}
                             </p>
                         </div>
                         

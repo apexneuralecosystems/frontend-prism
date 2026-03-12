@@ -59,7 +59,13 @@ export function ManageJobs() {
     
     // Offer form state
     const [showOfferForm, setShowOfferForm] = useState<string | null>(null);
-    const [offerLetterFile, setOfferLetterFile] = useState<File | null>(null);
+    const [offerStartDate, setOfferStartDate] = useState<string>('');
+    const [offerEndDate, setOfferEndDate] = useState<string>('');
+    const [offerDuration, setOfferDuration] = useState<string>('');
+    const [offerCtc, setOfferCtc] = useState<string>('');
+    const [offerCurrency, setOfferCurrency] = useState<'INR' | 'USD'>('INR');
+    const [offerPayFrequency, setOfferPayFrequency] = useState<string>('monthly');
+    const [offerBenefits, setOfferBenefits] = useState<string>('');
     const [sendingOffer, setSendingOffer] = useState(false);
     
     // Expandable details state
@@ -328,71 +334,69 @@ export function ManageJobs() {
     };
 
     const handleSendOffer = async (applicant: Applicant) => {
-        if (!offerLetterFile || !selectedJobId) return;
+        if (!selectedJobId) return;
         
         setSendingOffer(true);
         setMessage(null);
         
         try {
-            const formData = new FormData();
-            formData.append('applicantEmail', applicant.email);
-            formData.append('applicantName', applicant.name);
-            formData.append('orgEmail', userData?.email || '');
-            formData.append('orgName', userData?.name || '');
-            formData.append('job_id', selectedJobId);
-            formData.append('offer_letter', offerLetterFile);
-            
-            // Get access token for manual header setting (FormData needs special handling)
-            let accessToken = localStorage.getItem('access_token');
-            
-            // Make request with proper headers for FormData
-            const headers: HeadersInit = {};
-            if (accessToken) {
-                headers['Authorization'] = `Bearer ${accessToken}`;
+            const payload = {
+                applicantEmail: applicant.email,
+                applicantName: applicant.name,
+                orgEmail: userData?.email || '',
+                orgName: userData?.name || '',
+                job_id: selectedJobId,
+                start_date: offerStartDate,
+                end_date: offerEndDate || null,
+                duration: offerDuration,
+                annual_ctc: offerCtc,
+                currency: offerCurrency,
+                pay_frequency: offerPayFrequency,
+                benefits: offerBenefits,
+            };
+
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.SEND_OFFER_LETTER_AUTO,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                },
+                navigate
+            );
+
+            if (res === null) {
+                setSendingOffer(false);
+                return;
             }
-            // Don't set Content-Type - browser will set it with boundary for FormData
-            
-            const res = await fetch(API_ENDPOINTS.SEND_OFFER_LETTER, {
-                method: 'POST',
-                headers: headers,
-                body: formData
-            });
-            
-            // Handle 401 - try token refresh
+
             if (res.status === 401) {
                 const newToken = await refreshAccessToken();
-                if (newToken) {
-                    headers['Authorization'] = `Bearer ${newToken}`;
-                    const retryRes = await fetch(API_ENDPOINTS.SEND_OFFER_LETTER, {
-                        method: 'POST',
-                        headers: headers,
-                        body: formData
-                    });
-                    
-                    if (retryRes.status === 401) {
-                        clearAuthAndRedirect(navigate);
-                        setSendingOffer(false);
-                        return;
-                    }
-                    
-                    if (retryRes.ok) {
-                        setMessage({ type: 'success', text: 'Offer letter sent successfully!' });
-                        setShowOfferForm(null);
-                        setOfferLetterFile(null);
-                        await fetchApplicants(selectedJobId);
-                    } else {
-                        const error = await retryRes.json();
-                        setMessage({ type: 'error', text: error.detail || 'Failed to send offer letter' });
-                    }
-                } else {
+                if (!newToken) {
                     clearAuthAndRedirect(navigate);
                     setSendingOffer(false);
                     return;
                 }
+                const retryRes = await authenticatedFetch(
+                    API_ENDPOINTS.SEND_OFFER_LETTER_AUTO,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    },
+                    navigate
+                );
+                if (retryRes?.ok) {
+                    setMessage({ type: 'success', text: 'Offer letter sent successfully!' });
+                    setShowOfferForm(null);
+                    await fetchApplicants(selectedJobId);
+                } else {
+                    const error = await retryRes?.json();
+                    setMessage({ type: 'error', text: error?.detail || 'Failed to send offer letter' });
+                }
             } else if (res.ok) {
                 setMessage({ type: 'success', text: 'Offer letter sent successfully!' });
                 setShowOfferForm(null);
-                setOfferLetterFile(null);
                 await fetchApplicants(selectedJobId);
             } else {
                 const error = await res.json();
@@ -2812,120 +2816,156 @@ export function ManageJobs() {
                                                                     </div>
                                                                 </div>
 
-                                                                <div>
-                                                                    <label style={{
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: '6px',
-                                                                        fontSize: '12px',
-                                                                        fontWeight: '600',
-                                                                        color: '#15803d',
-                                                                        marginBottom: '10px'
-                                                                    }}>
-                                                                        📎 Offer Letter Document <span style={{ color: '#ef4444', fontSize: '14px' }}>*</span>
-                                                                    </label>
-                                                                    <div style={{
-                                                                        position: 'relative',
-                                                                        width: '100%'
-                                                                    }}>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                            Start Date
+                                                                        </label>
                                                                         <input
-                                                                            type="file"
-                                                                            accept=".pdf,.doc,.docx"
-                                                                            onChange={(e) => {
-                                                                                if (e.target.files && e.target.files[0]) {
-                                                                                    setOfferLetterFile(e.target.files[0]);
-                                                                                }
-                                                                            }}
+                                                                            type="date"
+                                                                            value={offerStartDate}
+                                                                            onChange={(e) => setOfferStartDate(e.target.value)}
                                                                             style={{
                                                                                 width: '100%',
-                                                                                padding: '12px 14px',
-                                                                                border: '2px dashed #86efac',
-                                                                                borderRadius: '10px',
-                                                                                fontSize: '12px',
-                                                                                background: '#ffffff',
-                                                                                cursor: 'pointer',
-                                                                                transition: 'all 0.2s ease',
-                                                                                fontWeight: '500',
-                                                                                color: '#15803d'
-                                                                            }}
-                                                                            onMouseEnter={(e) => {
-                                                                                e.currentTarget.style.borderColor = '#22c55e';
-                                                                                e.currentTarget.style.background = '#f0fdf4';
-                                                                            }}
-                                                                            onMouseLeave={(e) => {
-                                                                                e.currentTarget.style.borderColor = '#86efac';
-                                                                                e.currentTarget.style.background = '#ffffff';
+                                                                                padding: '8px 10px',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid #86efac',
+                                                                                fontSize: '12px'
                                                                             }}
                                                                         />
                                                                     </div>
-                                                                    {offerLetterFile && (
-                                                                        <div style={{
-                                                                            marginTop: '8px',
-                                                                            padding: '8px 12px',
-                                                                            background: '#ffffff',
-                                                                            border: '1px solid #bbf7d0',
+                                                                    <div>
+                                                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                            End Date (optional)
+                                                                        </label>
+                                                                        <input
+                                                                            type="date"
+                                                                            value={offerEndDate}
+                                                                            onChange={(e) => setOfferEndDate(e.target.value)}
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                padding: '8px 10px',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid #86efac',
+                                                                                fontSize: '12px'
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                            Duration
+                                                                        </label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={offerDuration}
+                                                                            onChange={(e) => setOfferDuration(e.target.value)}
+                                                                            placeholder="e.g. Full-time, 6 months"
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                padding: '8px 10px',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid #86efac',
+                                                                                fontSize: '12px'
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                            Annual CTC
+                                                                        </label>
+                                                                        <input
+                                                                            type="text"
+                                                                            value={offerCtc}
+                                                                            onChange={(e) => setOfferCtc(e.target.value)}
+                                                                            placeholder="e.g. 12,00,000"
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                padding: '8px 10px',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid #86efac',
+                                                                                fontSize: '12px'
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                            Currency
+                                                                        </label>
+                                                                        <select
+                                                                            value={offerCurrency}
+                                                                            onChange={(e) => setOfferCurrency(e.target.value as 'INR' | 'USD')}
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                padding: '8px 10px',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid #86efac',
+                                                                                fontSize: '12px'
+                                                                            }}
+                                                                        >
+                                                                            <option value="INR">₹ INR</option>
+                                                                            <option value="USD">$ USD</option>
+                                                                        </select>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                            Pay Frequency
+                                                                        </label>
+                                                                        <select
+                                                                            value={offerPayFrequency}
+                                                                            onChange={(e) => setOfferPayFrequency(e.target.value)}
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                padding: '8px 10px',
+                                                                                borderRadius: '8px',
+                                                                                border: '1px solid #86efac',
+                                                                                fontSize: '12px'
+                                                                            }}
+                                                                        >
+                                                                            <option value="monthly">Monthly</option>
+                                                                            <option value="quarterly">Quarterly</option>
+                                                                            <option value="annual">Annual</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <label style={{ fontSize: '12px', fontWeight: 600, color: '#15803d', marginBottom: '4px', display: 'block' }}>
+                                                                        Benefits / Notes
+                                                                    </label>
+                                                                    <textarea
+                                                                        value={offerBenefits}
+                                                                        onChange={(e) => setOfferBenefits(e.target.value)}
+                                                                        placeholder="List key benefits, bonus, ESOP, health insurance, etc."
+                                                                        rows={3}
+                                                                        style={{
+                                                                            width: '100%',
+                                                                            padding: '8px 10px',
                                                                             borderRadius: '8px',
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: '8px'
-                                                                        }}>
-                                                                            <span style={{ fontSize: '14px' }}>✅</span>
-                                                                            <span style={{
-                                                                                fontSize: '11px',
-                                                                                color: '#15803d',
-                                                                                fontWeight: '600',
-                                                                                overflow: 'hidden',
-                                                                                textOverflow: 'ellipsis',
-                                                                                whiteSpace: 'nowrap',
-                                                                                flex: 1
-                                                                            }}>
-                                                                                {offerLetterFile.name}
-                                                                            </span>
-                                                                            <span style={{
-                                                                                fontSize: '10px',
-                                                                                color: '#16a34a',
-                                                                                fontWeight: '500',
-                                                                                padding: '2px 6px',
-                                                                                background: '#dcfce7',
-                                                                                borderRadius: '4px'
-                                                                            }}>
-                                                                                {(offerLetterFile.size / 1024).toFixed(1)} KB
-                                                                            </span>
-                                                                        </div>
-                                                                    )}
-                                                                    <p style={{
-                                                                        fontSize: '10px',
-                                                                        color: '#16a34a',
-                                                                        margin: '8px 0 0 0',
-                                                                        fontStyle: 'italic',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: '4px'
-                                                                    }}>
-                                                                        <span>ℹ️</span>
-                                                                        Accepted formats: PDF, DOC, DOCX
-                                                                    </p>
+                                                                            border: '1px solid #86efac',
+                                                                            fontSize: '12px',
+                                                                            resize: 'vertical'
+                                                                        }}
+                                                                    />
                                                                 </div>
 
                                                                 <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                                                                     <button
                                                                         onClick={() => handleSendOffer(applicant)}
-                                                                        disabled={!offerLetterFile || sendingOffer}
+                                                                        disabled={sendingOffer || !offerStartDate || !offerDuration || !offerCtc}
                                                                         style={{
                                                                             flex: 1,
                                                                             padding: '12px 20px',
-                                                                            background: !offerLetterFile || sendingOffer 
-                                                                                ? '#cbd5e1' 
+                                                                            background: (sendingOffer || !offerStartDate || !offerDuration || !offerCtc)
+                                                                                ? '#cbd5e1'
                                                                                 : 'linear-gradient(135deg, #22c55e, #16a34a)',
                                                                             color: '#ffffff',
                                                                             border: 'none',
                                                                             borderRadius: '10px',
                                                                             fontSize: '13px',
                                                                             fontWeight: '700',
-                                                                            cursor: !offerLetterFile || sendingOffer ? 'not-allowed' : 'pointer',
+                                                                            cursor: (sendingOffer || !offerStartDate || !offerDuration || !offerCtc) ? 'not-allowed' : 'pointer',
                                                                             transition: 'all 0.2s ease',
-                                                                            boxShadow: !offerLetterFile || sendingOffer 
-                                                                                ? 'none' 
+                                                                            boxShadow: (sendingOffer || !offerStartDate || !offerDuration || !offerCtc)
+                                                                                ? 'none'
                                                                                 : '0 4px 12px rgba(34, 197, 94, 0.3)',
                                                                             letterSpacing: '0.3px',
                                                                             display: 'flex',
@@ -2934,13 +2974,13 @@ export function ManageJobs() {
                                                                             gap: '6px'
                                                                         }}
                                                                         onMouseEnter={(e) => {
-                                                                            if (offerLetterFile && !sendingOffer) {
+                                                                            if (!(sendingOffer || !offerStartDate || !offerDuration || !offerCtc)) {
                                                                                 e.currentTarget.style.transform = 'translateY(-2px)';
                                                                                 e.currentTarget.style.boxShadow = '0 6px 16px rgba(34, 197, 94, 0.4)';
                                                                             }
                                                                         }}
                                                                         onMouseLeave={(e) => {
-                                                                            if (offerLetterFile && !sendingOffer) {
+                                                                            if (!(sendingOffer || !offerStartDate || !offerDuration || !offerCtc)) {
                                                                                 e.currentTarget.style.transform = 'translateY(0)';
                                                                                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(34, 197, 94, 0.3)';
                                                                             }
@@ -2968,7 +3008,6 @@ export function ManageJobs() {
                                                                     <button
                                                                         onClick={() => {
                                                                             setShowOfferForm(null);
-                                                                            setOfferLetterFile(null);
                                                                         }}
                                                                         disabled={sendingOffer}
                                                                         style={{

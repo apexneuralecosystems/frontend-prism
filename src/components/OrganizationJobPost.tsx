@@ -57,9 +57,11 @@ const JobCard = ({
     onViewApplicants?: (job: JobPost, filterStatus?: string) => void;
     onPushToSalesforce?: (jobId: string) => Promise<{ already_pushed?: boolean; message?: string } | null>;
 }) => {
+    const navigate = useNavigate();
     const [sfPushing, setSfPushing] = useState(false);
     const [sfLocalPushed, setSfLocalPushed] = useState(false);
     const [sfMessage, setSfMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+    const [sfDownloading, setSfDownloading] = useState(false);
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-IN', {
             year: 'numeric',
@@ -87,6 +89,43 @@ const JobCard = ({
     };
 
     const typeColors = getJobTypeColor(job.job_type);
+
+    const downloadSalesforceJobData = async () => {
+        if (sfDownloading) return;
+        setSfDownloading(true);
+        setSfMessage(null);
+        try {
+            const res = await authenticatedFetch(
+                `${API_ENDPOINTS.SALESFORCE_PUSH_JOB(job.job_id)}?dry_run=true`,
+                { method: 'POST' },
+                navigate
+            );
+            if (!res) return;
+            const data = await res.json();
+            if (!res.ok) {
+                setSfMessage({ type: 'error', text: data?.detail || 'Failed to download job data' });
+                return;
+            }
+            const payload = data?.job_payload ?? data;
+            const jsonStr = JSON.stringify(payload, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `job_${job.job_id}_salesforce_payload.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            setSfMessage({ type: 'success', text: 'Downloaded job data JSON' });
+        } catch (e) {
+            setSfMessage({ type: 'error', text: 'Download failed. Check console.' });
+            // eslint-disable-next-line no-console
+            console.error('Salesforce payload download error:', e);
+        } finally {
+            setSfDownloading(false);
+        }
+    };
 
     return (
         <div
@@ -244,23 +283,24 @@ const JobCard = ({
                     )}
                     {/* Push to Salesforce — visible on closed job cards */}
                     {status === 'closed' && onPushToSalesforce && (
-                        (job.salesforce_pushed || sfLocalPushed) ? (
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '12px',
-                                color: '#166534',
-                                background: '#dcfce7',
-                                padding: '5px 10px',
-                                borderRadius: '8px',
-                                fontWeight: '500',
-                                border: '1px solid #86efac'
-                            }}>
-                                <CheckCircle style={{ width: '13px', height: '13px' }} />
-                                Data pushed to Salesforce
-                            </div>
-                        ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            {(job.salesforce_pushed || sfLocalPushed) && (
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    fontSize: '12px',
+                                    color: '#166534',
+                                    background: '#dcfce7',
+                                    padding: '5px 10px',
+                                    borderRadius: '8px',
+                                    fontWeight: '500',
+                                    border: '1px solid #86efac'
+                                }}>
+                                    <CheckCircle style={{ width: '13px', height: '13px' }} />
+                                    Data pushed to Salesforce
+                                </div>
+                            )}
                             <button
                                 disabled={sfPushing}
                                 onClick={async () => {
@@ -269,11 +309,10 @@ const JobCard = ({
                                     try {
                                         const res = await onPushToSalesforce(job.job_id);
                                         if (!res) return;
+                                        setSfLocalPushed(true);
                                         if (res.already_pushed) {
-                                            setSfLocalPushed(true);
-                                            setSfMessage({ type: 'info', text: 'Already pushed to Salesforce' });
+                                            setSfMessage({ type: 'success', text: 'Updated in Salesforce!' });
                                         } else {
-                                            setSfLocalPushed(true);
                                             setSfMessage({ type: 'success', text: 'Pushed to Salesforce!' });
                                         }
                                     } catch {
@@ -297,21 +336,32 @@ const JobCard = ({
                                     boxShadow: sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)',
                                     transition: 'all 0.15s ease',
                                 }}
-                                onMouseEnter={(e) => {
-                                    if (!sfPushing) {
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 161, 224, 0.5)';
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.boxShadow = sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
                             >
                                 <Cloud style={{ width: '14px', height: '14px' }} />
-                                {sfPushing ? 'Pushing…' : 'Push to Salesforce'}
+                                {sfPushing ? 'Pushing…' : (job.salesforce_pushed || sfLocalPushed ? 'Push again' : 'Push to Salesforce')}
                             </button>
-                        )
+                            <button
+                                disabled={sfDownloading}
+                                onClick={downloadSalesforceJobData}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '6px 14px',
+                                    fontSize: '13px',
+                                    background: sfDownloading ? '#e2e8f0' : '#f1f5f9',
+                                    color: sfDownloading ? '#94a3b8' : '#334155',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    cursor: sfDownloading ? 'not-allowed' : 'pointer',
+                                    fontWeight: '500',
+                                    transition: 'all 0.15s ease',
+                                }}
+                            >
+                                <FileText style={{ width: '14px', height: '14px' }} />
+                                {sfDownloading ? 'Downloading…' : 'Download job data'}
+                            </button>
+                        </div>
                     )}
                     <div style={{ fontSize: '12px', color: '#94a3b8' }}>
                         {status === 'closed' && job.closed_at ?

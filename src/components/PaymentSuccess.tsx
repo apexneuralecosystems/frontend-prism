@@ -12,6 +12,7 @@ export function PaymentSuccess() {
     const [success, setSuccess] = useState(false);
     const [creditsAdded, setCreditsAdded] = useState(0);
     const [totalCredits, setTotalCredits] = useState(0);
+    const [creditType, setCreditType] = useState<'job_post' | 'ai_interview'>('job_post');
 
     useEffect(() => {
         const capturePayment = async () => {
@@ -52,6 +53,7 @@ export function PaymentSuccess() {
                     setSuccess(true);
                     setCreditsAdded(result.credits_added || 0);
                     setTotalCredits(result.total_credits || 0);
+                    setCreditType(result.credit_type === 'ai_interview' ? 'ai_interview' : 'job_post');
                 } else {
                     const errorData = await res?.json();
                     throw new Error(errorData.detail || 'Failed to capture payment');
@@ -198,7 +200,7 @@ export function PaymentSuccess() {
                     color: '#64748b',
                     marginBottom: '16px'
                 }}>
-                    {creditsAdded} credit(s) have been added to your account.
+                    {creditsAdded} {creditType === 'ai_interview' ? 'AI Interview' : 'Job Post'} credit(s) have been added to your account.
                 </p>
                 <div style={{
                     padding: '16px',
@@ -211,7 +213,9 @@ export function PaymentSuccess() {
                         fontSize: '14px',
                         color: '#64748b',
                         margin: '0 0 4px 0'
-                    }}>Total Credits</p>
+                    }}>
+                        {creditType === 'ai_interview' ? 'Total AI Interview Credits (remaining)' : 'Total Job Post Credits (remaining)'}
+                    </p>
                     <p style={{
                         fontSize: '32px',
                         fontWeight: '700',
