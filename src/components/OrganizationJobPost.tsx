@@ -50,18 +50,22 @@ const JobCard = ({
     onClose,
     onViewApplicants,
     onPushToSalesforce,
+    onTriggerWebhook,
 }: {
     job: JobPost;
     status: 'open' | 'ongoing' | 'closed';
     onClose?: (jobId: string) => void;
     onViewApplicants?: (job: JobPost, filterStatus?: string) => void;
     onPushToSalesforce?: (jobId: string) => Promise<{ already_pushed?: boolean; message?: string } | null>;
+    onTriggerWebhook?: (jobId: string) => Promise<{ success: boolean; message?: string } | null>;
 }) => {
     const navigate = useNavigate();
     const [sfPushing, setSfPushing] = useState(false);
     const [sfLocalPushed, setSfLocalPushed] = useState(false);
     const [sfMessage, setSfMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
     const [sfDownloading, setSfDownloading] = useState(false);
+    const [webhookSending, setWebhookSending] = useState(false);
+    const [webhookLocalTriggered, setWebhookLocalTriggered] = useState(false);
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-IN', {
             year: 'numeric',
@@ -281,10 +285,10 @@ const JobCard = ({
                             Close Job
                         </button>
                     )}
-                    {/* Push to Salesforce — visible on closed job cards */}
-                    {status === 'closed' && onPushToSalesforce && (
+                    {/* External integrations — visible on closed job cards */}
+                    {status === 'closed' && (onPushToSalesforce || onTriggerWebhook) && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            {(job.salesforce_pushed || sfLocalPushed) && (
+                            {onPushToSalesforce && (job.salesforce_pushed || sfLocalPushed) && (
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -301,45 +305,47 @@ const JobCard = ({
                                     Data pushed to Salesforce
                                 </div>
                             )}
-                            <button
-                                disabled={sfPushing}
-                                onClick={async () => {
-                                    setSfPushing(true);
-                                    setSfMessage(null);
-                                    try {
-                                        const res = await onPushToSalesforce(job.job_id);
-                                        if (!res) return;
-                                        setSfLocalPushed(true);
-                                        if (res.already_pushed) {
-                                            setSfMessage({ type: 'success', text: 'Updated in Salesforce!' });
-                                        } else {
-                                            setSfMessage({ type: 'success', text: 'Pushed to Salesforce!' });
+                            {onPushToSalesforce && (
+                                <button
+                                    disabled={sfPushing}
+                                    onClick={async () => {
+                                        setSfPushing(true);
+                                        setSfMessage(null);
+                                        try {
+                                            const res = await onPushToSalesforce(job.job_id);
+                                            if (!res) return;
+                                            setSfLocalPushed(true);
+                                            if (res.already_pushed) {
+                                                setSfMessage({ type: 'success', text: 'Updated in Salesforce!' });
+                                            } else {
+                                                setSfMessage({ type: 'success', text: 'Pushed to Salesforce!' });
+                                            }
+                                        } catch {
+                                            setSfMessage({ type: 'error', text: 'Push failed. Check console.' });
+                                        } finally {
+                                            setSfPushing(false);
                                         }
-                                    } catch {
-                                        setSfMessage({ type: 'error', text: 'Push failed. Check console.' });
-                                    } finally {
-                                        setSfPushing(false);
-                                    }
-                                }}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '6px 14px',
-                                    fontSize: '13px',
-                                    background: sfPushing ? '#e2e8f0' : 'linear-gradient(to bottom right, #00A1E0, #0070D2)',
-                                    color: sfPushing ? '#94a3b8' : '#ffffff',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    cursor: sfPushing ? 'not-allowed' : 'pointer',
-                                    fontWeight: '500',
-                                    boxShadow: sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)',
-                                    transition: 'all 0.15s ease',
-                                }}
-                            >
-                                <Cloud style={{ width: '14px', height: '14px' }} />
-                                {sfPushing ? 'Pushing…' : (job.salesforce_pushed || sfLocalPushed ? 'Push again' : 'Push to Salesforce')}
-                            </button>
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 14px',
+                                        fontSize: '13px',
+                                        background: sfPushing ? '#e2e8f0' : 'linear-gradient(to bottom right, #00A1E0, #0070D2)',
+                                        color: sfPushing ? '#94a3b8' : '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: sfPushing ? 'not-allowed' : 'pointer',
+                                        fontWeight: '500',
+                                        boxShadow: sfPushing ? 'none' : '0 2px 6px rgba(0, 161, 224, 0.35)',
+                                        transition: 'all 0.15s ease',
+                                    }}
+                                >
+                                    <Cloud style={{ width: '14px', height: '14px' }} />
+                                    {sfPushing ? 'Pushing…' : (job.salesforce_pushed || sfLocalPushed ? 'Push again' : 'Push to Salesforce')}
+                                </button>
+                            )}
                             <button
                                 disabled={sfDownloading}
                                 onClick={downloadSalesforceJobData}
@@ -359,8 +365,54 @@ const JobCard = ({
                                 }}
                             >
                                 <FileText style={{ width: '14px', height: '14px' }} />
-                                {sfDownloading ? 'Downloading…' : 'Download job data'}
+                                {sfDownloading ? 'Downloading…' : 'Download JSON'}
                             </button>
+                            {onTriggerWebhook && (
+                                <button
+                                    disabled={webhookSending}
+                                    onClick={async () => {
+                                        setWebhookSending(true);
+                                        setSfMessage(null);
+                                        try {
+                                            const res = await onTriggerWebhook(job.job_id);
+                                            if (!res) return;
+                                            if (res.success) {
+                                                setWebhookLocalTriggered(true);
+                                                setSfMessage({
+                                                    type: 'success',
+                                                    text: res.message || 'Webhook triggered successfully',
+                                                });
+                                            } else {
+                                                setSfMessage({
+                                                    type: 'error',
+                                                    text: res.message || 'Webhook trigger failed',
+                                                });
+                                            }
+                                        } catch {
+                                            setSfMessage({ type: 'error', text: 'Webhook trigger failed. Check console.' });
+                                        } finally {
+                                            setWebhookSending(false);
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        padding: '6px 14px',
+                                        fontSize: '13px',
+                                        background: webhookSending ? '#e2e8f0' : '#ecfeff',
+                                        color: webhookSending ? '#94a3b8' : '#0f172a',
+                                        border: '1px solid #bae6fd',
+                                        borderRadius: '8px',
+                                        cursor: webhookSending ? 'not-allowed' : 'pointer',
+                                        fontWeight: '500',
+                                        transition: 'all 0.15s ease',
+                                    }}
+                                >
+                                    <Cloud style={{ width: '14px', height: '14px', color: '#0EA5E9' }} />
+                                    {webhookSending ? 'Triggering…' : (webhookLocalTriggered ? 'Trigger again' : 'Webhook trigger')}
+                                </button>
+                            )}
                         </div>
                     )}
                     <div style={{ fontSize: '12px', color: '#94a3b8' }}>
@@ -1141,6 +1193,35 @@ export function OrganizationJobPost() {
             setMessage({ type: 'error', text: 'Error loading job postings' });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleTriggerWebhook = async (jobId: string) => {
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.WEBHOOK_TRIGGER_JOB(jobId),
+                { method: 'POST' },
+                navigate
+            );
+            if (!res) return null;
+            const data = await res.json();
+            if (!res.ok) {
+                return {
+                    success: false,
+                    message: data?.detail || 'Webhook not configured or failed',
+                };
+            }
+            return {
+                success: true,
+                message: data?.message || 'Webhook triggered successfully',
+            };
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Webhook trigger error:', err);
+            return {
+                success: false,
+                message: 'Error triggering webhook. Please try again.',
+            };
         }
     };
 
@@ -2512,6 +2593,7 @@ export function OrganizationJobPost() {
                                         onClose={activeTab === 'ongoing' ? handleCloseJob : undefined}
                                         onViewApplicants={handleViewApplicants}
                                         onPushToSalesforce={activeTab === 'closed' ? handlePushToSalesforce : undefined}
+                                        onTriggerWebhook={activeTab === 'closed' ? handleTriggerWebhook : undefined}
                                     />
                                 ))}
                             </div>

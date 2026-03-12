@@ -39,6 +39,9 @@ interface OrganizationProfileData {
     linkedinUrl: string;
     twitterUrl: string;
 
+    // External integrations
+    externalWebhookUrl: string;
+
     // Employees
     employees: Employee[];
 }
@@ -59,6 +62,7 @@ const INITIAL_DATA: OrganizationProfileData = {
     logoUrl: "",
     linkedinUrl: "",
     twitterUrl: "",
+    externalWebhookUrl: "",
     employees: []
 };
 
@@ -267,6 +271,7 @@ export function OrganizationProfile() {
                             description: result.profile.about_company || '',
                             linkedinUrl: result.profile.linkedin_link || '',
                             twitterUrl: result.profile.instagram_link || '',
+                            externalWebhookUrl: result.profile.external_webhook_url || '',
                             logo: null,
                             employees: (result.profile.employees_details || []).map((emp: any) => ({
                                 name: emp.name || '',
@@ -509,6 +514,7 @@ export function OrganizationProfile() {
                 about_company: dataToSave.description,
                 linkedin_link: dataToSave.linkedinUrl,
                 instagram_link: dataToSave.twitterUrl,
+                external_webhook_url: dataToSave.externalWebhookUrl,
                 employees_details: employeesForBackend
             };
 
@@ -2904,7 +2910,8 @@ export function OrganizationProfile() {
                             <div
                                 style={{
                                     display: 'flex',
-                                    gap: 16,
+                                    flexDirection: 'column',
+                                    gap: 10,
                                     fontSize: 12
                                 }}
                             >
@@ -2944,14 +2951,6 @@ export function OrganizationProfile() {
                                             : 'LinkedIn Not Connected'}
                                     </span>
                                 </div>
-                            </div>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    gap: 16,
-                                    fontSize: 12
-                                }}
-                            >
                                 <div
                                     style={{
                                         display: 'flex',
@@ -2988,6 +2987,32 @@ export function OrganizationProfile() {
                                             : 'Salesforce Not Connected'}
                                     </span>
                                 </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8
+                                    }}
+                                >
+                                    <Globe
+                                        style={{
+                                            width: 16,
+                                            height: 16,
+                                            color: '#0F766E'
+                                        }}
+                                    />
+                                    <span
+                                        style={{
+                                            padding: '3px 8px',
+                                            borderRadius: 999,
+                                            background: data.externalWebhookUrl ? '#ECFDF3' : '#F3F4F6',
+                                            color: data.externalWebhookUrl ? '#15803D' : '#4B5563',
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        {data.externalWebhookUrl ? 'Webhook Connected' : 'Webhook Not Configured'}
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3003,6 +3028,91 @@ export function OrganizationProfile() {
 
                     <SectionCard title="Social Links" icon={Globe}>
                         {renderLinks()}
+                    </SectionCard>
+
+                    <SectionCard title="External App Webhook" icon={Globe}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {isEditMode ? (
+                                <div>
+                                    <label
+                                        style={{
+                                            display: 'block',
+                                            fontSize: '14px',
+                                            fontWeight: 500,
+                                            color: '#334155',
+                                            marginBottom: '8px'
+                                        }}
+                                    >
+                                        Webhook URL
+                                    </label>
+                                    <input
+                                        type="url"
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 16px',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${errors.externalWebhookUrl ? '#ef4444' : '#cbd5e1'}`,
+                                            background: '#ffffff',
+                                            fontSize: '14px',
+                                            color: '#0f172a',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                        value={data.externalWebhookUrl}
+                                        onChange={e => {
+                                            handleChange('externalWebhookUrl', e.target.value);
+                                            if (errors.externalWebhookUrl) {
+                                                setErrors(prev => {
+                                                    const newErrors = { ...prev };
+                                                    delete newErrors.externalWebhookUrl;
+                                                    return newErrors;
+                                                });
+                                            }
+                                        }}
+                                        onBlur={(e) => {
+                                            if (e.target.value && !validateUrl(e.target.value)) {
+                                                setErrors(prev => ({ ...prev, externalWebhookUrl: 'Please enter a valid URL starting with http:// or https://' }));
+                                            }
+                                        }}
+                                        onFocus={() => {
+                                            // no-op, keep border color logic simple here
+                                        }}
+                                        placeholder="https://external-app.com/webhook/..."
+                                    />
+                                    {errors.externalWebhookUrl && (
+                                        <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.externalWebhookUrl}</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    {data.externalWebhookUrl ? (
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 6
+                                            }}
+                                        >
+                                            <span style={{ fontSize: 13, color: '#6B7280' }}>
+                                                Webhook URL
+                                            </span>
+                                            <span
+                                                style={{
+                                                    fontSize: 13,
+                                                    color: '#0F172A',
+                                                    wordBreak: 'break-all'
+                                                }}
+                                            >
+                                                {data.externalWebhookUrl}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <span style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>
+                                            No webhook configured yet. Add a URL in edit mode.
+                                        </span>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </SectionCard>
 
                     {/* LinkedIn Connect - owner only, below Social Links */}
@@ -3388,6 +3498,40 @@ export function OrganizationProfile() {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        )}
+                        {data.externalWebhookUrl && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    padding: '12px 14px',
+                                    background: '#ECFEFF',
+                                    borderRadius: 10,
+                                    border: '1px solid #A5F3FC',
+                                    color: '#0F172A',
+                                }}
+                            >
+                                <div style={{
+                                    padding: 8,
+                                    background: '#E0F2FE',
+                                    borderRadius: 8,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <Globe style={{ width: '24px', height: '24px', color: '#0369A1' }} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: 600, fontSize: 14 }}>External App Webhook</span>
+                                    <span style={{ fontSize: 12, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {data.externalWebhookUrl}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: '#0E7490', marginTop: 4 }}>
+                                        Closed job data will be POSTed here as JSON when you trigger it from Closed Jobs.
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </SectionCard>
