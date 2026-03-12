@@ -3500,40 +3500,6 @@ export function OrganizationProfile() {
                                 })}
                             </div>
                         )}
-                        {data.externalWebhookUrl && (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 12,
-                                    padding: '12px 14px',
-                                    background: '#ECFEFF',
-                                    borderRadius: 10,
-                                    border: '1px solid #A5F3FC',
-                                    color: '#0F172A',
-                                }}
-                            >
-                                <div style={{
-                                    padding: 8,
-                                    background: '#E0F2FE',
-                                    borderRadius: 8,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                    <Globe style={{ width: '24px', height: '24px', color: '#0369A1' }} />
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: 600, fontSize: 14 }}>External App Webhook</span>
-                                    <span style={{ fontSize: 12, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {data.externalWebhookUrl}
-                                    </span>
-                                    <span style={{ fontSize: 11, color: '#0E7490', marginTop: 4 }}>
-                                        Closed job data will be POSTed here as JSON when you trigger it from Closed Jobs.
-                                    </span>
-                                </div>
-                            </div>
-                        )}
                     </SectionCard>
                     )}
 
