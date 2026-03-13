@@ -32,6 +32,7 @@ interface JobPost {
     closed_at?: string;
     salesforce_pushed?: boolean;
     salesforce_record_id?: string;
+    applicant_limit?: number;
 }
 
 function formatPackageLpa(job: JobPost): string {
@@ -51,6 +52,7 @@ const JobCard = ({
     onViewApplicants,
     onPushToSalesforce,
     onTriggerWebhook,
+    onModify,
 }: {
     job: JobPost;
     status: 'open' | 'ongoing' | 'closed';
@@ -58,6 +60,7 @@ const JobCard = ({
     onViewApplicants?: (job: JobPost, filterStatus?: string) => void;
     onPushToSalesforce?: (jobId: string) => Promise<{ already_pushed?: boolean; message?: string } | null>;
     onTriggerWebhook?: (jobId: string) => Promise<{ success: boolean; message?: string } | null>;
+    onModify?: (job: JobPost) => void;
 }) => {
     const navigate = useNavigate();
     const [sfPushing, setSfPushing] = useState(false);
@@ -189,7 +192,10 @@ const JobCard = ({
                                 }}
                             >
                                 <Eye style={{ width: 12, height: 12 }} />
-                                {job.applied_candidates.length} applicant{job.applied_candidates.length !== 1 ? 's' : ''}
+                                {job.applied_candidates.length}
+                                {typeof job.applicant_limit === 'number'
+                                    ? ` / ${job.applicant_limit} applicant${job.applicant_limit !== 1 ? 's' : ''}`
+                                    : ` applicant${job.applied_candidates.length !== 1 ? 's' : ''}`}
                             </button>
                         )}
                     </div>
@@ -257,6 +263,34 @@ const JobCard = ({
                     </a>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    {status === 'open' && onModify && (
+                        <button
+                            onClick={() => onModify(job)}
+                            style={{
+                                padding: '7px 16px',
+                                fontSize: 12,
+                                background: '#EEF2FF',
+                                color: '#1D4ED8',
+                                border: '1px solid #C7D2FE',
+                                borderRadius: 999,
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                boxShadow: '0 4px 10px rgba(129, 140, 248, 0.25)',
+                                transition: 'background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease',
+                                transform: 'translateY(0)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 8px 18px rgba(129, 140, 248, 0.35)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(129, 140, 248, 0.25)';
+                            }}
+                        >
+                            Modify
+                        </button>
+                    )}
                     {status === 'ongoing' && onClose && (
                         <button
                             onClick={() => onClose(job.job_id)}
@@ -1107,6 +1141,15 @@ export function OrganizationJobPost() {
     const [postJobHovered, setPostJobHovered] = useState(false);
     const [updateStatusHovered, setUpdateStatusHovered] = useState(false);
 
+    // Modify job (date / intake limit)
+    const [modifyJob, setModifyJob] = useState<JobPost | null>(null);
+    const [showModifyModal, setShowModifyModal] = useState(false);
+    const [modifyMode, setModifyMode] = useState<'date' | 'limit' | null>(null);
+    const [newCloseDate, setNewCloseDate] = useState('');
+    const [newApplicantLimit, setNewApplicantLimit] = useState<number>(50);
+    const [modifyLoading, setModifyLoading] = useState(false);
+    const [modifyError, setModifyError] = useState<string | null>(null);
+
     // Form state
     const [formData, setFormData] = useState({
         role: '',
@@ -1117,7 +1160,8 @@ export function OrganizationJobPost() {
         job_package_lpa_max: 0,
         job_type: 'full_time',
         notes: '',
-        jd_file: null as File | null
+        jd_file: null as File | null,
+        applicant_limit: 50 as number,
     });
     const [postOnLinkedIn, setPostOnLinkedIn] = useState(false);
     const [linkedInStatus, setLinkedInStatus] = useState<boolean | null>(null);
@@ -1232,6 +1276,77 @@ export function OrganizationJobPost() {
         }
     };
 
+    const handleOpenModifyJob = (job: JobPost) => {
+        setModifyJob(job);
+        setModifyMode(null);
+        setNewCloseDate(job.application_close_date || '');
+        setNewApplicantLimit(job.applicant_limit || 50);
+        setModifyError(null);
+        setShowModifyModal(true);
+    };
+
+    const handleSubmitModifyDate = async () => {
+        if (!modifyJob || !newCloseDate) return;
+        setModifyLoading(true);
+        setModifyError(null);
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.ORGANIZATION_JOBPOST_UPDATE_DATE(modifyJob.job_id),
+                {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ application_close_date: newCloseDate }),
+                },
+                navigate
+            );
+            if (!res) return;
+            const data = await res.json();
+            if (!res.ok) {
+                setModifyError(data?.detail || 'Failed to update application close date');
+                return;
+            }
+            await fetchAllJobs();
+            setShowModifyModal(false);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Modify date error:', err);
+            setModifyError('Error updating date. Please try again.');
+        } finally {
+            setModifyLoading(false);
+        }
+    };
+
+    const handleSubmitModifyLimit = async () => {
+        if (!modifyJob || !newApplicantLimit || newApplicantLimit <= 0) return;
+        setModifyLoading(true);
+        setModifyError(null);
+        try {
+            const res = await authenticatedFetch(
+                API_ENDPOINTS.ORGANIZATION_JOBPOST_INCREASE_LIMIT(modifyJob.job_id),
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_applicant_limit: newApplicantLimit }),
+                },
+                navigate
+            );
+            if (!res) return;
+            const data = await res.json();
+            if (!res.ok) {
+                setModifyError(data?.detail || 'Failed to increase intake limit');
+                return;
+            }
+            await fetchAllJobs();
+            setShowModifyModal(false);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('Modify limit error:', err);
+            setModifyError('Error increasing limit. Please try again.');
+        } finally {
+            setModifyLoading(false);
+        }
+    };
+
     const handleInputChange = (field: string, value: any) => {
         // If changing job type to unpaid, automatically set LPA range to 0
         if (field === 'job_type' && value === 'unpaid') {
@@ -1304,6 +1419,7 @@ export function OrganizationJobPost() {
             formDataToSend.append('job_type', formData.job_type);
             formDataToSend.append('notes', formData.notes);
             formDataToSend.append('jd_file', formData.jd_file);
+            formDataToSend.append('applicant_limit', (formData.applicant_limit || 50).toString());
 
             const res = await authenticatedFetch(
                 API_ENDPOINTS.ORGANIZATION_JOBPOST,
@@ -2254,6 +2370,48 @@ export function OrganizationJobPost() {
                                     )}
                                 </div>
 
+                                {/* Applicant Intake Limit (credits-based) */}
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>
+                                        Maximum Applicants (per job posting)
+                                    </label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <input
+                                            type="number"
+                                            min={50}
+                                            step={50}
+                                            value={formData.applicant_limit}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value, 10);
+                                                handleInputChange('applicant_limit', Number.isNaN(val) || val < 50 ? 50 : val);
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 14px',
+                                                borderRadius: '8px',
+                                                border: '1px solid #cbd5e1',
+                                                background: '#ffffff',
+                                                fontSize: '14px',
+                                                color: '#0f172a',
+                                                outline: 'none',
+                                                transition: 'all 0.15s ease',
+                                                boxSizing: 'border-box'
+                                            }}
+                                            onFocus={(e) => {
+                                                e.currentTarget.style.borderColor = '#2563eb';
+                                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.1)';
+                                            }}
+                                            onBlur={(e) => {
+            e.currentTarget.style.borderColor = '#cbd5e1';
+            e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                        />
+                                        <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                                            50 applicants use 1 job credit. For example, 100 applicants = 2 credits. You will only be charged for the additional capacity.
+                                        </span>
+                                    </div>
+                                </div>
+
                                 {/* Job Type */}
                                 <div>
                                     <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#475569', marginBottom: '8px' }}>
@@ -2594,11 +2752,193 @@ export function OrganizationJobPost() {
                                         onViewApplicants={handleViewApplicants}
                                         onPushToSalesforce={activeTab === 'closed' ? handlePushToSalesforce : undefined}
                                         onTriggerWebhook={activeTab === 'closed' ? handleTriggerWebhook : undefined}
+                                        onModify={activeTab === 'open' ? handleOpenModifyJob : undefined}
                                     />
                                 ))}
                             </div>
                         );
                     })()}
+                    </div>
+                </div>
+            )}
+
+            {/* Modify Job Modal */}
+            {showModifyModal && modifyJob && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(15,23,42,0.45)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 60,
+                        padding: 20,
+                    }}
+                    onClick={() => {
+                        if (!modifyLoading) {
+                            setShowModifyModal(false);
+                            setModifyMode(null);
+                            setModifyJob(null);
+                        }
+                    }}
+                >
+                    <div
+                        style={{
+                            background: '#ffffff',
+                            borderRadius: 12,
+                            padding: 24,
+                            maxWidth: 420,
+                            width: '100%',
+                            boxShadow: '0 18px 40px rgba(15,23,42,0.25)',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <h3 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
+                                Modify Job – {modifyJob.role}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!modifyLoading) {
+                                        setShowModifyModal(false);
+                                        setModifyMode(null);
+                                        setModifyJob(null);
+                                    }
+                                }}
+                                style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    cursor: modifyLoading ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                <X style={{ width: 18, height: 18, color: '#6b7280' }} />
+                            </button>
+                        </div>
+                        <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 16px 0' }}>
+                            Choose what you’d like to change for this job.
+                        </p>
+
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                            <button
+                                type="button"
+                                onClick={() => setModifyMode('date')}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 10px',
+                                    borderRadius: 999,
+                                    border: modifyMode === 'date' ? '1px solid #2563eb' : '1px solid #e5e7eb',
+                                    background: modifyMode === 'date' ? '#eff6ff' : '#f9fafb',
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    color: modifyMode === 'date' ? '#1d4ed8' : '#475569',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Change close date
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setModifyMode('limit')}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 10px',
+                                    borderRadius: 999,
+                                    border: modifyMode === 'limit' ? '1px solid #2563eb' : '1px solid #e5e7eb',
+                                    background: modifyMode === 'limit' ? '#eff6ff' : '#f9fafb',
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    color: modifyMode === 'limit' ? '#1d4ed8' : '#475569',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Increase intake limit
+                            </button>
+                        </div>
+
+                        {modifyMode === 'date' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <label style={{ fontSize: 13, color: '#475569' }}>
+                                    New Application Close Date
+                                </label>
+                                <input
+                                    type="date"
+                                    value={newCloseDate}
+                                    onChange={(e) => setNewCloseDate(e.target.value)}
+                                    style={{
+                                        padding: '10px 14px',
+                                        borderRadius: 8,
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: 14,
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    disabled={modifyLoading}
+                                    onClick={handleSubmitModifyDate}
+                                    style={{
+                                        marginTop: 4,
+                                        padding: '10px 16px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        background: modifyLoading ? '#93c5fd' : 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
+                                        color: '#ffffff',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        cursor: modifyLoading ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    {modifyLoading ? 'Updating…' : 'Save Date'}
+                                </button>
+                            </div>
+                        )}
+
+                        {modifyMode === 'limit' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <label style={{ fontSize: 13, color: '#475569' }}>
+                                    New applicant intake limit
+                                </label>
+                                <input
+                                    type="number"
+                                    min={50}
+                                    step={50}
+                                    value={newApplicantLimit}
+                                    onChange={(e) => setNewApplicantLimit(parseInt(e.target.value, 10) || 50)}
+                                    style={{
+                                        padding: '10px 14px',
+                                        borderRadius: 8,
+                                        border: '1px solid #e2e8f0',
+                                        fontSize: 14,
+                                    }}
+                                />
+                                <small style={{ fontSize: 12, color: '#94a3b8' }}>
+                                    50 applicants use 1 job credit. You will only be charged for the additional capacity.
+                                </small>
+                                <button
+                                    type="button"
+                                    disabled={modifyLoading}
+                                    onClick={handleSubmitModifyLimit}
+                                    style={{
+                                        marginTop: 4,
+                                        padding: '10px 16px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        background: modifyLoading ? '#93c5fd' : 'linear-gradient(to bottom right, #2563eb, #1d4ed8)',
+                                        color: '#ffffff',
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        cursor: modifyLoading ? 'not-allowed' : 'pointer',
+                                    }}
+                                >
+                                    {modifyLoading ? 'Updating…' : 'Save Limit'}
+                                </button>
+                            </div>
+                        )}
+
+                        {modifyError && (
+                            <p style={{ marginTop: 12, fontSize: 12, color: '#dc2626' }}>{modifyError}</p>
+                        )}
                     </div>
                 </div>
             )}

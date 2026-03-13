@@ -21,6 +21,9 @@ interface JobPost {
     job_type: string;
     notes: string;
     created_at: string;
+    applicant_limit?: number;
+    applicant_count?: number;
+    intake_limit_reached?: boolean;
     job_status?: 'open' | 'ongoing' | 'closed';
 }
 
@@ -804,6 +807,10 @@ export function JobDetail() {
                             ) : applied ? (
                                 <div style={{ padding: 16, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', color: '#166534', fontWeight: 500 }}>
                                     Job applied.
+                                </div>
+                            ) : job?.intake_limit_reached === true ? (
+                                <div style={{ padding: 16, background: '#fef3c7', borderRadius: 8, border: '1px solid #fcd34d', color: '#92400e', fontWeight: 500 }}>
+                                    Applicant intake limit reached for this job. Please wait until the company increases the intake limit or contact the HR team.
                                 </div>
                             ) : !applicationsOpen ? (
                                 <div style={{ padding: 16, background: '#fef3c7', borderRadius: 8, border: '1px solid #fcd34d', color: '#92400e', fontWeight: 500 }}>

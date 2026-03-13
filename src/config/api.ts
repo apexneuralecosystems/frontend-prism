@@ -75,6 +75,8 @@ export const API_ENDPOINTS = {
   ORGANIZATION_JOBPOST_CLOSED: `${API_BASE_URL}/api/organization-jobpost/closed`,
   GET_JOB_APPLICANTS: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/applicants`,
   UPDATE_APPLICANT_STATUS: (jobId: string, email: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/applicant/${email}/status`,
+  ORGANIZATION_JOBPOST_UPDATE_DATE: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/update-date`,
+  ORGANIZATION_JOBPOST_INCREASE_LIMIT: (jobId: string) => `${API_BASE_URL}/api/organization-jobpost/${jobId}/increase-limit`,
   CREATE_REVIEW_REQUEST: `${API_BASE_URL}/api/review-request`,
   SEND_OFFER_LETTER: `${API_BASE_URL}/api/send-offer-letter`,
   SEND_OFFER_LETTER_AUTO: `${API_BASE_URL}/api/send-offer-letter-auto`,
